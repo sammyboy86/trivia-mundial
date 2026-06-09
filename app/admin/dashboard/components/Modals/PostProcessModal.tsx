@@ -90,8 +90,7 @@ export default function PostProcessModal({
         if (done) break;
 
         buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\
-");
+        const lines = buffer.split("\n");
         buffer = lines.pop() || "";
 
         let eventType = "";

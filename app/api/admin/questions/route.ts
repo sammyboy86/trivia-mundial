@@ -91,10 +91,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const insertData: Record<string, string> = {
+    const insertData: Record<string, string | null> = {
       question_text: (body.question_text as string).trim(),
       question_type: body.question_type as string,
       correct_option: (body.correct_option as string).trim().toLowerCase(),
+      hint: body.hint ? (body.hint as string).trim() : null,
+      answer_explanation: body.answer_explanation ? (body.answer_explanation as string).trim() : null,
+      associated_kc_id: body.associated_kc_id ? (body.associated_kc_id as string).trim() : null,
     };
 
     if (body.question_type === "multiple_choice") {
@@ -149,10 +152,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const updateData: Record<string, string> = {
+    const updateData: Record<string, string | null> = {
       question_text: (updateFields.question_text as string).trim(),
       question_type: updateFields.question_type as string,
       correct_option: (updateFields.correct_option as string).trim().toLowerCase(),
+      hint: updateFields.hint ? (updateFields.hint as string).trim() : null,
+      answer_explanation: updateFields.answer_explanation ? (updateFields.answer_explanation as string).trim() : null,
+      associated_kc_id: updateFields.associated_kc_id ? (updateFields.associated_kc_id as string).trim() : null,
     };
 
     if (updateFields.question_type === "multiple_choice") {

@@ -21,6 +21,9 @@ export default function QuestionModal({
   useEffect(() => {
     if (question) {
       setForm({
+        associated_kc_id: question.associated_kc_id || "",
+        hint: question.hint || "",
+        answer_explanation: question.answer_explanation || "",
         question_text: question.question_text,
         question_type: question.question_type,
         option_a: question.option_a || "",
@@ -109,6 +112,48 @@ export default function QuestionModal({
               required
               maxLength={1000}
               placeholder="Enter your question..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="q-kc" className="form-label">
+              Associated KC ID (Optional)
+            </label>
+            <input
+              id="q-kc"
+              type="text"
+              className="form-input"
+              value={form.associated_kc_id}
+              onChange={(e) => updateForm("associated_kc_id", e.target.value)}
+              placeholder="e.g. KC123"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="q-hint" className="form-label">
+              Hint (Optional)
+            </label>
+            <textarea
+              id="q-hint"
+              className="form-input"
+              rows={2}
+              value={form.hint}
+              onChange={(e) => updateForm("hint", e.target.value)}
+              placeholder="Provide a hint for the student..."
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="q-explanation" className="form-label">
+              Correct Answer Explanation (Optional)
+            </label>
+            <textarea
+              id="q-explanation"
+              className="form-input"
+              rows={2}
+              value={form.answer_explanation}
+              onChange={(e) => updateForm("answer_explanation", e.target.value)}
+              placeholder="Provide an explanation for the correct answer..."
             />
           </div>
 

@@ -57,10 +57,13 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const insertData: Record<string, string> = {
+      const insertData: Record<string, string | null> = {
         question_text: (q.question_text as string).trim(),
         question_type: q.question_type as string,
         correct_option: (q.correct_answer as string).trim().toLowerCase(),
+        hint: q.hint ? (q.hint as string).trim() : null,
+        answer_explanation: q.answer_explanation ? (q.answer_explanation as string).trim() : null,
+        associated_kc_id: q.associated_kc_id ? (q.associated_kc_id as string).trim() : null,
       };
 
       if (q.question_type === "multiple_choice") {

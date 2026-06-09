@@ -120,8 +120,20 @@ export async function POST(request: NextRequest) {
             return;
           }
 
-          if (jsonFile && Array.isArray(jsonFile.results)) {
-            for (const item of jsonFile.results) {
+          let qs = jsonFile;
+          if (jsonFile && jsonFile.results) qs = jsonFile.results;
+          if (jsonFile && jsonFile.generated_assessments) qs = jsonFile.generated_assessments;
+
+          if (Array.isArray(qs)) {
+            let flatQs: any[] = [];
+            for (const item of qs) {
+              if (item.generated_assessments && Array.isArray(item.generated_assessments)) {
+                flatQs.push(...item.generated_assessments);
+              } else {
+                flatQs.push(item);
+              }
+            }
+            for (const item of flatQs) {
               allItems.push({ content: item, sourceFile: file });
             }
           }

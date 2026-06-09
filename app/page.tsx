@@ -6,7 +6,7 @@ export default function Home() {
     <main className={styles.hero}>
       <div className={styles["hero-badge"]}>
         <span className={styles["hero-badge-dot"]}></span>
-        Free &middot; No sign-up required
+        Gratis &middot; Sin registro
       </div>
 
       <div className={styles["hero-icon"]}>🌍</div>
@@ -16,28 +16,28 @@ export default function Home() {
       </h1>
 
       <p className={styles["hero-subtitle"]}>
-        Challenge yourself with questions from around the world.
-        Multiple choice, true or false, and open-ended — how much do you really know?
+        Ponte a prueba con preguntas de todo el mundo.
+        Opción múltiple, verdadero o falso y preguntas abiertas — ¿cuánto sabes realmente?
       </p>
 
       <div className={styles["hero-actions"]}>
         <Link href="/quiz" className="btn btn-primary btn-lg" id="start-quiz-btn">
-          🎯 Start Quiz
+          🎯 Iniciar Quiz
         </Link>
       </div>
 
       <div className={styles["hero-features"]}>
         <div className={styles["hero-feature"]}>
           <span className={styles["hero-feature-icon"]}>🧠</span>
-          <span className={styles["hero-feature-text"]}>Multiple Choice</span>
+          <span className={styles["hero-feature-text"]}>Opción Múltiple</span>
         </div>
         <div className={styles["hero-feature"]}>
           <span className={styles["hero-feature-icon"]}>✅</span>
-          <span className={styles["hero-feature-text"]}>True / False</span>
+          <span className={styles["hero-feature-text"]}>Verdadero / Falso</span>
         </div>
         <div className={styles["hero-feature"]}>
           <span className={styles["hero-feature-icon"]}>✍️</span>
-          <span className={styles["hero-feature-text"]}>Open Ended</span>
+          <span className={styles["hero-feature-text"]}>Preguntas Abiertas</span>
         </div>
       </div>
     </main>

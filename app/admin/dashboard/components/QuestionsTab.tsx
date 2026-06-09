@@ -4,17 +4,27 @@ import { Question } from "../types";
 
 interface QuestionsTabProps {
   questions: Question[];
+  totalQuestions: number;
+  currentPage: number;
+  onPageChange: (page: number) => void;
   loading: boolean;
   onAdd: () => void;
+  onRestyle: () => void;
+  onExplain: () => void;
   onEdit: (q: Question) => void;
-  fetchQuestions: () => void;
+  fetchQuestions: (page?: number) => void;
   showToast: (message: string, type: "success" | "error") => void;
 }
 
 export default function QuestionsTab({
   questions,
+  totalQuestions,
+  currentPage,
+  onPageChange,
   loading,
   onAdd,
+  onRestyle,
+  onExplain,
   onEdit,
   fetchQuestions,
   showToast,
@@ -55,13 +65,25 @@ export default function QuestionsTab({
 
   return (
     <div className={styles.tabContent}>
-      <div className={styles.tabToolbar}>
+      <div className={styles.tabToolbar} style={{ display: 'flex', gap: '1rem' }}>
         <button
           className="btn btn-primary"
           onClick={onAdd}
           id="add-question-btn"
         >
           + Add Question
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={onRestyle}
+        >
+          🎨 AI Style Correction
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={onExplain}
+        >
+          🤖 Auto-Generate Explanations
         </button>
       </div>
 
@@ -90,6 +112,11 @@ export default function QuestionsTab({
                   >
                     {typeLabel(q.question_type)}
                   </span>
+                  {q.associated_kc_id && (
+                    <span className={styles.countBadge} style={{ background: 'var(--bg-card-hover)', color: 'var(--accent-blue)', borderColor: 'var(--accent-blue)' }}>
+                      KC: {q.associated_kc_id}
+                    </span>
+                  )}
                   <span className={styles.countBadge}>
                     Answer: {q.correct_option}
                   </span>
@@ -111,6 +138,28 @@ export default function QuestionsTab({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && totalQuestions > 20 && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '2rem' }}>
+          <button 
+            className="btn btn-secondary btn-sm" 
+            disabled={currentPage <= 1}
+            onClick={() => onPageChange(currentPage - 1)}
+          >
+            ← Previous
+          </button>
+          <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+            Page <strong style={{ color: 'var(--text-primary)' }}>{currentPage}</strong> of {Math.ceil(totalQuestions / 20)}
+          </span>
+          <button 
+            className="btn btn-secondary btn-sm" 
+            disabled={currentPage >= Math.ceil(totalQuestions / 20)}
+            onClick={() => onPageChange(currentPage + 1)}
+          >
+            Next →
+          </button>
         </div>
       )}
     </div>

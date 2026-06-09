@@ -1,5 +1,8 @@
 export interface Question {
   id: string;
+  associated_kc_id: string | null;
+  hint: string | null;
+  answer_explanation: string | null;
   question_text: string;
   question_type: string;
   option_a: string | null;
@@ -10,6 +13,9 @@ export interface Question {
 }
 
 export interface QuestionFormData {
+  associated_kc_id: string;
+  hint: string;
+  answer_explanation: string;
   question_text: string;
   question_type: string;
   option_a: string;
@@ -37,6 +43,9 @@ export interface ResultFile {
 }
 
 export const emptyForm: QuestionFormData = {
+  associated_kc_id: "",
+  hint: "",
+  answer_explanation: "",
   question_text: "",
   question_type: "multiple_choice",
   option_a: "",

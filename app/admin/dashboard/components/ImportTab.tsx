@@ -167,6 +167,8 @@ export default function ImportTab({
       if (selectedQs.length === 0) throw new Error("No questions selected");
 
       const formattedQs = selectedQs.map(q => ({
+        associated_kc_id: q.associated_kc_id || "",
+        hint: q.hint || "",
         question_text: q.question_text || q.questionText || "",
         question_type: q.question_type || "multiple_choice",
         options: q.options || {},
@@ -331,6 +333,21 @@ export default function ImportTab({
                         value={parsedForm.question_text || parsedForm.questionText || ""} 
                         onChange={e => setParsedForm({...parsedForm, question_text: e.target.value})} 
                         rows={3} 
+                        placeholder="Question Text"
+                      />
+                      <input 
+                        className="form-input" 
+                        type="text" 
+                        value={parsedForm.associated_kc_id || ""} 
+                        onChange={e => setParsedForm({...parsedForm, associated_kc_id: e.target.value})} 
+                        placeholder="Associated KC ID (Optional)" 
+                      />
+                      <textarea 
+                        className="form-input" 
+                        value={parsedForm.hint || ""} 
+                        onChange={e => setParsedForm({...parsedForm, hint: e.target.value})} 
+                        rows={2} 
+                        placeholder="Hint (Optional)"
                       />
                       <select 
                         className="form-input" 
@@ -379,6 +396,21 @@ export default function ImportTab({
                     </div>
                   ) : (
                     <>
+                      {q.associated_kc_id && (
+                        <div style={{ marginBottom: '0.5rem' }}>
+                          <span style={{ 
+                            background: 'var(--bg-card-hover)', 
+                            color: 'var(--accent-blue)', 
+                            padding: '0.2rem 0.5rem', 
+                            borderRadius: '4px', 
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            letterSpacing: '0.05em'
+                          }}>
+                            KC: {q.associated_kc_id}
+                          </span>
+                        </div>
+                      )}
                       <strong style={{ fontSize: '1.1rem', lineHeight: '1.5', color: 'var(--text-primary)' }}>
                         {q.question_text || q.questionText || "No Question Text"}
                       </strong>
@@ -398,6 +430,21 @@ export default function ImportTab({
                               {String(val)}
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {q.hint && (
+                        <div style={{ 
+                          marginTop: '0.75rem', 
+                          padding: '0.75rem', 
+                          background: 'rgba(52, 211, 153, 0.1)', 
+                          borderLeft: '3px solid var(--accent-emerald)',
+                          borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
+                          fontSize: '0.9rem',
+                          color: 'var(--text-primary)'
+                        }}>
+                          <strong style={{ color: 'var(--accent-emerald)', display: 'block', marginBottom: '0.25rem' }}>💡 Hint</strong>
+                          {q.hint}
                         </div>
                       )}
 

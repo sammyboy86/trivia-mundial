@@ -9,6 +9,8 @@ import QuestionsTab from "./components/QuestionsTab";
 import MarkdownUploadTab from "./components/MarkdownUploadTab";
 import ImportTab from "./components/ImportTab";
 import QuestionModal from "./components/Modals/QuestionModal";
+import RestyleModal from "./components/Modals/RestyleModal";
+import ExplainModal from "./components/Modals/ExplainModal";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<"questions" | "markdown" | "import">("questions");
@@ -24,9 +26,13 @@ export default function AdminDashboard() {
 
   // Questions State
   const [questions, setQuestions] = useState<Question[]>([]);
+  const [totalQuestions, setTotalQuestions] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [showRestyleModal, setShowRestyleModal] = useState(false);
+  const [showExplainModal, setShowExplainModal] = useState(false);
 
   // Markdown State
   const [mdFiles, setMdFiles] = useState<MarkdownFile[]>([]);
@@ -37,16 +43,18 @@ export default function AdminDashboard() {
   const [resultsLoading, setResultsLoading] = useState(true);
 
   // Data Fetching
-  const fetchQuestions = useCallback(async () => {
+  const fetchQuestions = useCallback(async (pageToFetch: number = 1) => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/questions");
+      const res = await fetch(`/api/admin/questions?page=${pageToFetch}&limit=20`);
       if (res.status === 401) {
         router.push("/admin");
         return;
       }
       const data = await res.json();
       setQuestions(data.questions || []);
+      setTotalQuestions(data.total || 0);
+      setCurrentPage(data.page || 1);
     } catch {
       showToast("Failed to load questions", "error");
     }
@@ -83,7 +91,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    fetchQuestions();
+    fetchQuestions(1);
   }, [fetchQuestions]);
 
   useEffect(() => {
@@ -123,7 +131,7 @@ export default function AdminDashboard() {
             id="tab-questions"
           >
             📋 Questions
-            <span className={styles.countBadge}>{questions.length}</span>
+            <span className={styles.countBadge}>{totalQuestions}</span>
           </button>
           <button
             className={`${styles.tab} ${activeTab === "markdown" ? styles.tabActive : ""}`}
@@ -146,11 +154,13 @@ export default function AdminDashboard() {
         {activeTab === "questions" && (
           <QuestionsTab
             questions={questions}
+            totalQuestions={totalQuestions}
+            currentPage={currentPage}
+            onPageChange={fetchQuestions}
             loading={loading}
-            onAdd={() => {
-              setEditingQuestion(null);
-              setShowQuestionModal(true);
-            }}
+            onAdd={() => setShowQuestionModal(true)}
+            onRestyle={() => setShowRestyleModal(true)}
+            onExplain={() => setShowExplainModal(true)}
             onEdit={(q) => {
               setEditingQuestion(q);
               setShowQuestionModal(true);
@@ -191,6 +201,26 @@ export default function AdminDashboard() {
             fetchQuestions();
           }}
           showToast={showToast}
+        />
+      )}
+
+      {showRestyleModal && (
+        <RestyleModal
+          onClose={() => setShowRestyleModal(false)}
+          onComplete={() => {
+            setShowRestyleModal(false);
+            fetchQuestions();
+          }}
+        />
+      )}
+
+      {showExplainModal && (
+        <ExplainModal
+          onClose={() => setShowExplainModal(false)}
+          onComplete={() => {
+            setShowExplainModal(false);
+            fetchQuestions();
+          }}
         />
       )}
 
