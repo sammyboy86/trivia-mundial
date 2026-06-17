@@ -3,6 +3,7 @@ export interface Question {
   associated_kc_id: string | null;
   hint: string | null;
   answer_explanation: string | null;
+  topic: string | null;
   question_text: string;
   question_type: string;
   option_a: string | null;
@@ -10,12 +11,14 @@ export interface Question {
   option_c: string | null;
   option_d: string | null;
   correct_option: string;
+  metadata?: any;
 }
 
 export interface QuestionFormData {
   associated_kc_id: string;
   hint: string;
   answer_explanation: string;
+  topic: string;
   question_text: string;
   question_type: string;
   option_a: string;
@@ -23,6 +26,7 @@ export interface QuestionFormData {
   option_c: string;
   option_d: string;
   correct_option: string;
+  metadata_str: string;
 }
 
 export interface MarkdownFile {
@@ -46,6 +50,7 @@ export const emptyForm: QuestionFormData = {
   associated_kc_id: "",
   hint: "",
   answer_explanation: "",
+  topic: "",
   question_text: "",
   question_type: "multiple_choice",
   option_a: "",
@@ -53,4 +58,5 @@ export const emptyForm: QuestionFormData = {
   option_c: "",
   option_d: "",
   correct_option: "a",
+  metadata_str: "{}",
 };

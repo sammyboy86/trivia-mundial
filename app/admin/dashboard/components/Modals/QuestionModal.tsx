@@ -24,6 +24,7 @@ export default function QuestionModal({
         associated_kc_id: question.associated_kc_id || "",
         hint: question.hint || "",
         answer_explanation: question.answer_explanation || "",
+        topic: question.topic || "",
         question_text: question.question_text,
         question_type: question.question_type,
         option_a: question.option_a || "",
@@ -31,6 +32,7 @@ export default function QuestionModal({
         option_c: question.option_c || "",
         option_d: question.option_d || "",
         correct_option: question.correct_option,
+        metadata_str: question.metadata ? JSON.stringify(question.metadata, null, 2) : "{}",
       });
     } else {
       setForm(emptyForm);
@@ -45,8 +47,19 @@ export default function QuestionModal({
     e.preventDefault();
     setSaving(true);
     try {
+      let parsedMetadata = {};
+      try {
+        parsedMetadata = JSON.parse(form.metadata_str || "{}");
+      } catch (err) {
+        showToast("Invalid JSON in metadata field", "error");
+        setSaving(false);
+        return;
+      }
+
       const method = question ? "PUT" : "POST";
-      const body = question ? { id: question.id, ...form } : form;
+      const { metadata_str, ...restForm } = form;
+      const body = question ? { id: question.id, ...restForm, metadata: parsedMetadata } : { ...restForm, metadata: parsedMetadata };
+      
       const res = await fetch("/api/admin/questions", {
         method,
         headers: { "Content-Type": "application/json" },
@@ -126,6 +139,20 @@ export default function QuestionModal({
               value={form.associated_kc_id}
               onChange={(e) => updateForm("associated_kc_id", e.target.value)}
               placeholder="e.g. KC123"
+            />
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="q-topic" className="form-label">
+              Topic (Optional)
+            </label>
+            <input
+              id="q-topic"
+              type="text"
+              className="form-input"
+              value={form.topic}
+              onChange={(e) => updateForm("topic", e.target.value)}
+              placeholder="e.g. History"
             />
           </div>
 
@@ -235,6 +262,21 @@ export default function QuestionModal({
               />
             </div>
           )}
+
+          <div className="form-group">
+            <label htmlFor="q-metadata" className="form-label">
+              Metadata JSON (Optional)
+            </label>
+            <textarea
+              id="q-metadata"
+              className="form-input"
+              rows={4}
+              value={form.metadata_str}
+              onChange={(e) => updateForm("metadata_str", e.target.value)}
+              placeholder='{"difficulty": "hard", "tags": ["a", "b"]}'
+              style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}
+            />
+          </div>
 
           <div className={styles.modalActions}>
             <button

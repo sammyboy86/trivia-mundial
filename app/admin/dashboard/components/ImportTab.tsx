@@ -26,6 +26,7 @@ export default function ImportTab({
   const [importing, setImporting] = useState(false);
 
   const [translateProgress, setTranslateProgress] = useState({ current: 0, total: 0 });
+  const [importProgress, setImportProgress] = useState<{current: number, total: number} | null>(null);
   const [selectedParsedQuestions, setSelectedParsedQuestions] = useState<Set<number>>(new Set());
   const [editingParsedIndex, setEditingParsedIndex] = useState<number | null>(null);
   const [parsedForm, setParsedForm] = useState<any>(null);
@@ -83,10 +84,25 @@ export default function ImportTab({
           }
         }
         
-        flatQs = flatQs.map(q => ({
-          ...q,
-          question_type: q.item_type === "open_question" ? "open_ended" : q.item_type || "multiple_choice"
-        }));
+        flatQs = flatQs.map(q => {
+          const hasFlatOptions = 'option_a' in q || 'option_b' in q || 'option_c' in q || 'option_d' in q;
+          const normalizedOptions = q.options || (hasFlatOptions ? {
+            a: q.option_a ?? null,
+            b: q.option_b ?? null,
+            c: q.option_c ?? null,
+            d: q.option_d ?? null
+          } : {});
+
+          // Remove null options to not break the UI rendering
+          const cleanOptions = Object.fromEntries(Object.entries(normalizedOptions).filter(([_, v]) => v !== null));
+
+          return {
+            ...q,
+            options: Object.keys(cleanOptions).length > 0 ? cleanOptions : undefined,
+            question_type: q.item_type === "open_question" ? "open_ended" : q.item_type || q.question_type || "multiple_choice",
+            correct_answer: q.correct_answer || q.correctAnswer || q.correct_option || "a"
+          };
+        });
         
         setParsedQuestions(flatQs);
         setSelectedParsedQuestions(new Set(flatQs.map((_, i) => i)));
@@ -169,20 +185,33 @@ export default function ImportTab({
       const formattedQs = selectedQs.map(q => ({
         associated_kc_id: q.associated_kc_id || "",
         hint: q.hint || "",
+        answer_explanation: q.answer_explanation || "",
         question_text: q.question_text || q.questionText || "",
         question_type: q.question_type || "multiple_choice",
         options: q.options || {},
-        correct_answer: q.correct_answer || q.correctAnswer || "a"
+        correct_answer: q.correct_answer || q.correctAnswer || q.correct_option || "a"
       }));
 
-      const res = await fetch("/api/admin/questions/bulk", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questions: formattedQs })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Bulk insert failed");
-      showToast(`Imported ${data.total} questions successfully!`, "success");
+      const CHUNK_SIZE = 50;
+      let totalImported = 0;
+      
+      setImportProgress({ current: 0, total: formattedQs.length });
+
+      for (let i = 0; i < formattedQs.length; i += CHUNK_SIZE) {
+        const chunk = formattedQs.slice(i, i + CHUNK_SIZE);
+        const res = await fetch("/api/admin/questions/bulk", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ questions: chunk })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(`Batch ${Math.floor(i/CHUNK_SIZE) + 1} failed: ${data.error || "Bulk insert failed"}`);
+        
+        totalImported += (data.total || chunk.length);
+        setImportProgress({ current: totalImported, total: formattedQs.length });
+      }
+
+      showToast(`Imported ${totalImported} questions successfully!`, "success");
       setParsedQuestions([]);
       setImportSourceText("");
       fetchQuestions(); 
@@ -191,6 +220,7 @@ export default function ImportTab({
       showToast(e instanceof Error ? e.message : "Import error", "error");
     }
     setImporting(false);
+    setImportProgress(null);
   }
 
   function toggleParsedSelection(i: number) {
@@ -273,7 +303,7 @@ export default function ImportTab({
                 {translating ? `Translating Selected...` : `🌐 Translate Selected (${selectedParsedQuestions.size})`}
               </button>
               <button className="btn btn-primary" onClick={handleImportToApp} disabled={importing}>
-                {importing ? "Importing..." : "🚀 Step 4: Import to App Database"}
+                {importing ? (importProgress ? `Importing ${importProgress.current}/${importProgress.total}...` : "Importing...") : "🚀 Step 4: Import to App Database"}
               </button>
             </div>
             

@@ -1,14 +1,18 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase-client";
 import type { Question } from "@/lib/types";
+import { getQuizQuestions } from "@/lib/question-selection";
+import { renderWithBold } from "@/lib/formatters";
 import styles from "./quiz.module.css";
 
 const QUIZ_SIZE = 10;
+const SESSION_STORAGE_KEY = "trivia_session_data";
 
 export default function QuizPage() {
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -21,29 +25,71 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const [animKey, setAnimKey] = useState(0);
+  
+  const questionStartTimeRef = useRef<number>(Date.now());
 
-  const fetchQuestions = useCallback(async () => {
+  const fetchQuestions = useCallback(async (existingQuestions?: Question[]) => {
     setLoading(true);
-    // Fetch random questions using Supabase
-    const { data, error } = await supabase
-      .from("questions")
-      .select("*")
-      .limit(QUIZ_SIZE);
-
-    if (error) {
-      console.error("Failed to load questions");
-      setQuestions([]);
-    } else {
-      // Shuffle client-side for randomness
-      const shuffled = (data || []).sort(() => Math.random() - 0.5);
-      setQuestions(shuffled);
+    let selectedQuestions = existingQuestions;
+    if (!selectedQuestions || selectedQuestions.length === 0) {
+      selectedQuestions = await getQuizQuestions("random", QUIZ_SIZE);
     }
+    setQuestions(selectedQuestions);
     setLoading(false);
+    return selectedQuestions;
   }, []);
 
-  useEffect(() => {
-    fetchQuestions();
+  const initSession = useCallback(async () => {
+    try {
+      const stored = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.sessionId && parsed.questions && parsed.questions.length > 0) {
+          setSessionId(parsed.sessionId);
+          setQuestions(parsed.questions);
+          setCurrentIndex(parsed.currentIndex || 0);
+          setScore(parsed.score || 0);
+          setLoading(false);
+          questionStartTimeRef.current = Date.now();
+          return;
+        }
+      }
+
+      // Start new session
+      const res = await fetch("/api/quiz/session", { method: "POST" });
+      const data = await res.json();
+      const newSessionId = data.sessionId;
+      setSessionId(newSessionId);
+      
+      const newQuestions = await fetchQuestions();
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+        sessionId: newSessionId,
+        questions: newQuestions,
+        currentIndex: 0,
+        score: 0
+      }));
+      questionStartTimeRef.current = Date.now();
+    } catch (e) {
+      console.error("Failed to init session", e);
+      fetchQuestions();
+    }
   }, [fetchQuestions]);
+
+  useEffect(() => {
+    initSession();
+  }, [initSession]);
+
+  useEffect(() => {
+    // Keep localStorage updated when state changes
+    if (sessionId && questions.length > 0) {
+      localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
+        sessionId,
+        questions,
+        currentIndex,
+        score
+      }));
+    }
+  }, [sessionId, questions, currentIndex, score]);
 
   const currentQuestion = questions[currentIndex];
 
@@ -57,7 +103,7 @@ export default function QuizPage() {
     return keys as ("a" | "b" | "c" | "d")[];
   }, [currentQuestion]);
 
-  function handleOptionSelect(option: string) {
+  async function handleOptionSelect(option: string) {
     if (isAnswered) return;
     setSelectedAnswer(option);
     setIsAnswered(true);
@@ -67,8 +113,31 @@ export default function QuizPage() {
       (option === "true" && currentQuestion.correct_option === "verdadero") ||
       (option === "false" && currentQuestion.correct_option === "falso");
 
+    const newScore = score + (isCorrect ? 1 : 0);
     if (isCorrect) {
-      setScore((s) => s + 1);
+      setScore(newScore);
+    }
+
+    const timeTakenSeconds = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
+
+    if (sessionId) {
+      fetch("/api/quiz/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          questionId: currentQuestion.id,
+          questionText: currentQuestion.question_text,
+          questionType: currentQuestion.question_type,
+          userAnswer: option,
+          isCorrect,
+          usedHint: showHint,
+          timeTakenSeconds,
+          isCompleted: currentIndex + 1 >= questions.length,
+          score: newScore,
+          totalQuestions: questions.length
+        }),
+      }).catch(console.error);
     }
   }
 
@@ -76,6 +145,8 @@ export default function QuizPage() {
     if (isAnswered || !openEndedAnswer.trim() || isGrading) return;
     
     setIsGrading(true);
+    let finalCorrect = false;
+    let newScore = score;
     try {
       const res = await fetch("/api/quiz/grade", {
         method: "POST",
@@ -89,30 +160,47 @@ export default function QuizPage() {
 
       if (res.ok) {
         const data = await res.json();
-        setOpenEndedGradingResult(data.is_correct);
-        if (data.is_correct) {
-          setScore((s) => s + 1);
-        }
+        finalCorrect = data.is_correct;
       } else {
         // Fallback if API fails
-        const fallbackCorrect = openEndedAnswer.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase();
-        setOpenEndedGradingResult(fallbackCorrect);
-        if (fallbackCorrect) {
-          setScore((s) => s + 1);
-        }
+        finalCorrect = openEndedAnswer.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase();
       }
     } catch (err) {
       // Fallback
-      const fallbackCorrect = openEndedAnswer.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase();
-      setOpenEndedGradingResult(fallbackCorrect);
-      if (fallbackCorrect) {
-        setScore((s) => s + 1);
-      }
+      finalCorrect = openEndedAnswer.trim().toLowerCase() === currentQuestion.correct_option.trim().toLowerCase();
+    }
+
+    setOpenEndedGradingResult(finalCorrect);
+    if (finalCorrect) {
+      newScore = score + 1;
+      setScore(newScore);
     }
 
     setSelectedAnswer(openEndedAnswer.trim().toLowerCase());
     setIsAnswered(true);
     setIsGrading(false);
+
+    const timeTakenSeconds = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
+
+    if (sessionId) {
+      fetch("/api/quiz/track", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId,
+          questionId: currentQuestion.id,
+          questionText: currentQuestion.question_text,
+          questionType: currentQuestion.question_type,
+          userAnswer: openEndedAnswer.trim(),
+          isCorrect: finalCorrect,
+          usedHint: showHint,
+          timeTakenSeconds,
+          isCompleted: currentIndex + 1 >= questions.length,
+          score: newScore,
+          totalQuestions: questions.length
+        }),
+      }).catch(console.error);
+    }
   }
 
   function handleNext() {
@@ -127,9 +215,12 @@ export default function QuizPage() {
     setOpenEndedAnswer("");
     setOpenEndedGradingResult(null);
     setAnimKey((k) => k + 1);
+    questionStartTimeRef.current = Date.now();
   }
 
   function handlePlayAgain() {
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    setSessionId(null);
     setCurrentIndex(0);
     setScore(0);
     setSelectedAnswer(null);
@@ -139,7 +230,7 @@ export default function QuizPage() {
     setOpenEndedGradingResult(null);
     setShowResults(false);
     setAnimKey(0);
-    fetchQuestions();
+    initSession();
   }
 
   if (loading) {
@@ -268,7 +359,7 @@ export default function QuizPage() {
         </div>
 
         <h2 className={styles.questionText} style={{ whiteSpace: "pre-line", lineHeight: "1.6" }}>
-          {currentQuestion.question_text.replace(/\.\s+/g, ".\n\n")}
+          {renderWithBold(currentQuestion.question_text.replace(/\.\s+/g, ".\n\n"))}
         </h2>
 
         {/* Hint Section */}
@@ -339,7 +430,7 @@ export default function QuizPage() {
                   <span className={styles.optionLabel}>
                     {displayLetter}
                   </span>
-                  {optionText}
+                  {renderWithBold(optionText)}
                 </button>
               );
             })}
@@ -421,7 +512,7 @@ export default function QuizPage() {
               >
                 {isCurrentAnswerCorrect
                   ? "✅ ¡Correcto!"
-                  : `❌ La respuesta era: ${currentQuestion.correct_option}`}
+                  : <>❌ La respuesta era: {renderWithBold(currentQuestion.correct_option)}</>}
               </div>
             )}
           </div>
@@ -442,7 +533,7 @@ export default function QuizPage() {
             <strong style={{ color: 'var(--accent-red)', display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               📚 Explicación
             </strong>
-            {currentQuestion.answer_explanation}
+            {renderWithBold(currentQuestion.answer_explanation)}
           </div>
         )}
       </div>

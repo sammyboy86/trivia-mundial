@@ -1,6 +1,7 @@
 import React from "react";
 import styles from "../../admin.module.css";
 import { Question } from "../types";
+import { renderWithBold } from "@/lib/formatters";
 
 interface QuestionsTabProps {
   questions: Question[];
@@ -11,9 +12,13 @@ interface QuestionsTabProps {
   onAdd: () => void;
   onRestyle: () => void;
   onExplain: () => void;
+  onGenerateTopics: () => void;
   onEdit: (q: Question) => void;
   fetchQuestions: (page?: number) => void;
   showToast: (message: string, type: "success" | "error") => void;
+  searchId: string;
+  setSearchId: (id: string) => void;
+  onSearch: () => void;
 }
 
 export default function QuestionsTab({
@@ -25,9 +30,13 @@ export default function QuestionsTab({
   onAdd,
   onRestyle,
   onExplain,
+  onGenerateTopics,
   onEdit,
   fetchQuestions,
   showToast,
+  searchId,
+  setSearchId,
+  onSearch,
 }: QuestionsTabProps) {
   function typeLabel(type: string) {
     if (type === "multiple_choice") return "Multiple Choice";
@@ -63,6 +72,33 @@ export default function QuestionsTab({
     }
   }
 
+  async function handleDownloadJSON() {
+    try {
+      showToast("Preparing download...", "success");
+      const res = await fetch("/api/admin/questions/export");
+      if (res.status === 401) {
+        window.location.href = "/admin";
+        return;
+      }
+      if (!res.ok) {
+        showToast("Download failed", "error");
+        return;
+      }
+      const data = await res.json();
+      const blob = new Blob([JSON.stringify(data.questions, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `questions_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast("Connection error during download", "error");
+    }
+  }
+
   return (
     <div className={styles.tabContent}>
       <div className={styles.tabToolbar} style={{ display: 'flex', gap: '1rem' }}>
@@ -85,6 +121,30 @@ export default function QuestionsTab({
         >
           🤖 Auto-Generate Explanations
         </button>
+        <button
+          className="btn btn-secondary"
+          onClick={onGenerateTopics}
+        >
+          🏷️ Auto-Generate Topics
+        </button>
+        <button
+          className="btn btn-secondary"
+          onClick={handleDownloadJSON}
+        >
+          ⬇️ Download JSON
+        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
+          <input 
+            type="text" 
+            placeholder="Search by ID..." 
+            className="form-input" 
+            style={{ width: '250px' }}
+            value={searchId}
+            onChange={e => setSearchId(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && onSearch()}
+          />
+          <button className="btn btn-secondary" onClick={onSearch}>Search</button>
+        </div>
       </div>
 
       {loading ? (
@@ -103,7 +163,7 @@ export default function QuestionsTab({
           {questions.map((q) => (
             <div key={q.id} className={styles.questionRow}>
               <div>
-                <div className={styles.questionRowText}>{q.question_text}</div>
+                <div className={styles.questionRowText}>{renderWithBold(q.question_text)}</div>
                 <div className={styles.questionRowMeta}>
                   <span
                     className={`${styles.countBadge} ${typeBadgeClass(
@@ -117,6 +177,27 @@ export default function QuestionsTab({
                       KC: {q.associated_kc_id}
                     </span>
                   )}
+                  {q.topic && (
+                    <span className={styles.countBadge} style={{ background: 'var(--bg-card-hover)', color: 'var(--accent-purple)', borderColor: 'var(--accent-purple)' }}>
+                      Topic: {q.topic}
+                    </span>
+                  )}
+                  {q.metadata && typeof q.metadata === 'object' && Object.entries(q.metadata).map(([key, value]) => {
+                    let displayValue = String(value);
+                    if (Array.isArray(value)) {
+                      displayValue = `[Array(${value.length})]`;
+                    } else if (value !== null && typeof value === 'object') {
+                      displayValue = '{...}';
+                    } else if (displayValue.length > 50) {
+                      displayValue = displayValue.substring(0, 50) + '...';
+                    }
+                    
+                    return (
+                      <span key={key} className={styles.countBadge} style={{ background: 'var(--bg-card-hover)', color: 'var(--accent-gold)', borderColor: 'var(--accent-gold)' }}>
+                        {key}: {displayValue}
+                      </span>
+                    );
+                  })}
                   <span className={styles.countBadge}>
                     Answer: {q.correct_option}
                   </span>

@@ -11,9 +11,13 @@ import ImportTab from "./components/ImportTab";
 import QuestionModal from "./components/Modals/QuestionModal";
 import RestyleModal from "./components/Modals/RestyleModal";
 import ExplainModal from "./components/Modals/ExplainModal";
+import TopicPromptModal from "./components/Modals/TopicPromptModal";
+import SessionsTab from "./components/SessionsTab";
+import JsonManipulationTab from "./components/JsonManipulationTab";
+import ThematicClusteringTab from "./components/ThematicClusteringTab";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"questions" | "markdown" | "import">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "markdown" | "import" | "sessions" | "manipulate" | "clustering">("questions");
   
   // Shared State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -33,6 +37,8 @@ export default function AdminDashboard() {
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [showRestyleModal, setShowRestyleModal] = useState(false);
   const [showExplainModal, setShowExplainModal] = useState(false);
+  const [showTopicModal, setShowTopicModal] = useState(false);
+  const [searchId, setSearchId] = useState("");
 
   // Markdown State
   const [mdFiles, setMdFiles] = useState<MarkdownFile[]>([]);
@@ -43,10 +49,12 @@ export default function AdminDashboard() {
   const [resultsLoading, setResultsLoading] = useState(true);
 
   // Data Fetching
-  const fetchQuestions = useCallback(async (pageToFetch: number = 1) => {
+  const fetchQuestions = useCallback(async (pageToFetch: number = 1, sid: string = searchId) => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/questions?page=${pageToFetch}&limit=20`);
+      let url = `/api/admin/questions?page=${pageToFetch}&limit=20`;
+      if (sid) url += `&searchId=${encodeURIComponent(sid)}`;
+      const res = await fetch(url);
       if (res.status === 401) {
         router.push("/admin");
         return;
@@ -148,6 +156,27 @@ export default function AdminDashboard() {
           >
             📥 Import JSON
           </button>
+          <button
+            className={`${styles.tab} ${activeTab === "sessions" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("sessions")}
+            id="tab-sessions"
+          >
+            📊 Sessions
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === "manipulate" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("manipulate")}
+            id="tab-manipulate"
+          >
+            🧬 Manipulate JSON
+          </button>
+          <button
+            className={`${styles.tab} ${activeTab === "clustering" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("clustering")}
+            id="tab-clustering"
+          >
+            🌌 Thematic Clustering
+          </button>
         </div>
 
         {/* Content */}
@@ -161,12 +190,16 @@ export default function AdminDashboard() {
             onAdd={() => setShowQuestionModal(true)}
             onRestyle={() => setShowRestyleModal(true)}
             onExplain={() => setShowExplainModal(true)}
+            onGenerateTopics={() => setShowTopicModal(true)}
             onEdit={(q) => {
               setEditingQuestion(q);
               setShowQuestionModal(true);
             }}
             fetchQuestions={fetchQuestions}
             showToast={showToast}
+            searchId={searchId}
+            setSearchId={setSearchId}
+            onSearch={() => fetchQuestions(1, searchId)}
           />
         )}
 
@@ -187,6 +220,23 @@ export default function AdminDashboard() {
             resultFiles={resultFiles}
             fetchQuestions={fetchQuestions}
             onImportComplete={() => setActiveTab("questions")}
+            showToast={showToast}
+          />
+        )}
+
+        {activeTab === "sessions" && (
+          <SessionsTab />
+        )}
+
+        {activeTab === "manipulate" && (
+          <JsonManipulationTab 
+            fetchQuestions={fetchQuestions}
+            showToast={showToast}
+          />
+        )}
+        
+        {activeTab === "clustering" && (
+          <ThematicClusteringTab
             showToast={showToast}
           />
         )}
@@ -219,6 +269,16 @@ export default function AdminDashboard() {
           onClose={() => setShowExplainModal(false)}
           onComplete={() => {
             setShowExplainModal(false);
+            fetchQuestions();
+          }}
+        />
+      )}
+
+      {showTopicModal && (
+        <TopicPromptModal
+          onClose={() => setShowTopicModal(false)}
+          onComplete={() => {
+            setShowTopicModal(false);
             fetchQuestions();
           }}
         />

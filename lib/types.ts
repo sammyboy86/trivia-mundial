@@ -3,6 +3,7 @@ export interface Question {
   associated_kc_id: string | null;
   hint: string | null;
   answer_explanation: string | null;
+  topic: string | null;
   question_text: string;
   question_type: "multiple_choice" | "true_false" | "open_ended";
   option_a: string | null;
@@ -17,6 +18,7 @@ export interface QuestionFormData {
   associated_kc_id: string;
   hint: string;
   answer_explanation: string;
+  topic: string;
   question_text: string;
   question_type: "multiple_choice" | "true_false" | "open_ended";
   option_a: string;

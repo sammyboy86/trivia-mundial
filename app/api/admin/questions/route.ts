@@ -64,9 +64,17 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "50", 10)));
   const offset = (page - 1) * limit;
 
-  const { data, error, count } = await supabaseAdmin
+  const searchId = searchParams.get("searchId")?.trim();
+
+  let query = supabaseAdmin
     .from("questions")
-    .select("*", { count: "exact" })
+    .select("*", { count: "exact" });
+
+  if (searchId) {
+    query = query.eq("id", searchId);
+  }
+
+  const { data, error, count } = await query
     .order("created_at", { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -91,13 +99,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const insertData: Record<string, string | null> = {
+    const insertData: Record<string, string | null | any> = {
       question_text: (body.question_text as string).trim(),
       question_type: body.question_type as string,
       correct_option: (body.correct_option as string).trim().toLowerCase(),
       hint: body.hint ? (body.hint as string).trim() : null,
       answer_explanation: body.answer_explanation ? (body.answer_explanation as string).trim() : null,
       associated_kc_id: body.associated_kc_id ? (body.associated_kc_id as string).trim() : null,
+      topic: body.topic ? (body.topic as string).trim() : null,
+      metadata: body.metadata || {},
     };
 
     if (body.question_type === "multiple_choice") {
@@ -152,13 +162,15 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
 
-    const updateData: Record<string, string | null> = {
+    const updateData: Record<string, string | null | any> = {
       question_text: (updateFields.question_text as string).trim(),
       question_type: updateFields.question_type as string,
       correct_option: (updateFields.correct_option as string).trim().toLowerCase(),
       hint: updateFields.hint ? (updateFields.hint as string).trim() : null,
       answer_explanation: updateFields.answer_explanation ? (updateFields.answer_explanation as string).trim() : null,
       associated_kc_id: updateFields.associated_kc_id ? (updateFields.associated_kc_id as string).trim() : null,
+      topic: updateFields.topic ? (updateFields.topic as string).trim() : null,
+      metadata: updateFields.metadata || {},
     };
 
     if (updateFields.question_type === "multiple_choice") {
