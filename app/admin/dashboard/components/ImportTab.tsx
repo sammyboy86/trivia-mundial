@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styles from "../../admin.module.css";
 import { ResultFile } from "../types";
 
@@ -38,6 +38,23 @@ export default function ImportTab({
     const savedTranslate = localStorage.getItem("adminTranslatePrompt");
     if (savedTranslate) setTranslatePrompt(savedTranslate);
   }, []);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      setImportSourceText(text);
+      showToast(`Loaded ${file.name}`, "success");
+    } catch {
+      showToast("Failed to read file", "error");
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
 
   async function handleLoadResultFile(e: React.ChangeEvent<HTMLSelectElement>) {
     const filename = e.target.value;
@@ -86,21 +103,46 @@ export default function ImportTab({
         
         flatQs = flatQs.map(q => {
           const hasFlatOptions = 'option_a' in q || 'option_b' in q || 'option_c' in q || 'option_d' in q;
-          const normalizedOptions = q.options || (hasFlatOptions ? {
-            a: q.option_a ?? null,
-            b: q.option_b ?? null,
-            c: q.option_c ?? null,
-            d: q.option_d ?? null
-          } : {});
+          
+          let normalizedOptions = q.options;
+          if (Array.isArray(q.options)) {
+            normalizedOptions = {};
+            const keys = ['a', 'b', 'c', 'd'];
+            q.options.forEach((opt: any, idx: number) => {
+              if (idx < 4) normalizedOptions[keys[idx]] = opt;
+            });
+          } else if (!q.options && hasFlatOptions) {
+            normalizedOptions = {
+              a: q.option_a ?? null,
+              b: q.option_b ?? null,
+              c: q.option_c ?? null,
+              d: q.option_d ?? null
+            };
+          }
 
           // Remove null options to not break the UI rendering
-          const cleanOptions = Object.fromEntries(Object.entries(normalizedOptions).filter(([_, v]) => v !== null));
+          const cleanOptions = normalizedOptions && typeof normalizedOptions === 'object' 
+            ? Object.fromEntries(Object.entries(normalizedOptions).filter(([_, v]) => v !== null && v !== undefined))
+            : {};
+
+          let correct = q.correct_answer || q.correctAnswer || q.correct_option || "a";
+          // Map array indices to letters if necessary
+          if (String(correct) === "0") correct = "a";
+          if (String(correct) === "1") correct = "b";
+          if (String(correct) === "2") correct = "c";
+          if (String(correct) === "3") correct = "d";
+          
+          // Map literal option text back to letter if matched
+          if (Object.keys(cleanOptions).length > 0) {
+             const foundKey = Object.entries(cleanOptions).find(([k, v]) => String(v).trim().toLowerCase() === String(correct).trim().toLowerCase());
+             if (foundKey) correct = foundKey[0];
+          }
 
           return {
             ...q,
             options: Object.keys(cleanOptions).length > 0 ? cleanOptions : undefined,
             question_type: q.item_type === "open_question" ? "open_ended" : q.item_type || q.question_type || "multiple_choice",
-            correct_answer: q.correct_answer || q.correctAnswer || q.correct_option || "a"
+            correct_answer: correct
           };
         });
         
@@ -264,6 +306,23 @@ export default function ImportTab({
             ))}
           </optgroup>
         </select>
+
+        <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', fontWeight: 600 }}>OR</span>
+          <input 
+            type="file" 
+            accept=".json" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            style={{ display: 'none' }} 
+          />
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => fileInputRef.current?.click()}
+          >
+            💻 Upload from Computer
+          </button>
+        </div>
       </div>
       <div className="form-group" style={{ marginTop: '1.5rem' }}>
         <label className="form-label">Or Paste JSON Manually</label>

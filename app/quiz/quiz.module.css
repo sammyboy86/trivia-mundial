@@ -369,12 +369,22 @@
 
 @media (max-width: 480px) {
   .questionCard {
-    padding: 1.5rem;
-    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    border-radius: var(--radius-md);
+  }
+
+  .questionText {
+    font-size: 1.15rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .optionButton {
+    padding: 0.875rem 1rem;
+    font-size: 0.95rem;
   }
 
   .resultsCard {
-    padding: 2rem 1.5rem;
+    padding: 2rem 1.25rem;
   }
 
   .resultsScore {

@@ -7,7 +7,7 @@ export type QuestionSelectionAlgorithm = "random" | "spaced_repetition" | "diffi
 
 export async function getQuizQuestions(
   algorithm: QuestionSelectionAlgorithm = "random",
-  limit: number = 10
+  limit: number = 20
 ): Promise<Question[]> {
   switch (algorithm) {
     case "random":

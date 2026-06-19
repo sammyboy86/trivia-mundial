@@ -8,8 +8,20 @@ import { getQuizQuestions } from "@/lib/question-selection";
 import { renderWithBold } from "@/lib/formatters";
 import styles from "./quiz.module.css";
 
-const QUIZ_SIZE = 10;
+const QUIZ_SIZE = 20;
 const SESSION_STORAGE_KEY = "trivia_session_data";
+
+function isAnswerCorrect(questionType: string, selected: string, correctOpt: string) {
+  if (questionType === "true_false") {
+    const s = String(selected).toLowerCase();
+    const c = String(correctOpt).toLowerCase();
+    if (s === c) return true;
+    if (s === "true" && (c === "verdadero" || c === "a" || c === "1")) return true;
+    if (s === "false" && (c === "falso" || c === "b" || c === "0")) return true;
+    return false;
+  }
+  return selected === correctOpt;
+}
 
 export default function QuizPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -25,14 +37,20 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const [animKey, setAnimKey] = useState(0);
-  
+  const [isAdaptive, setIsAdaptive] = useState(false);
+  const [isFetchingNext, setIsFetchingNext] = useState(false);
+
   const questionStartTimeRef = useRef<number>(Date.now());
 
-  const fetchQuestions = useCallback(async (existingQuestions?: Question[]) => {
+  const fetchQuestions = useCallback(async (existingQuestions?: Question[], adaptiveMode: boolean = false) => {
     setLoading(true);
     let selectedQuestions = existingQuestions;
     if (!selectedQuestions || selectedQuestions.length === 0) {
-      selectedQuestions = await getQuizQuestions("random", QUIZ_SIZE);
+      if (adaptiveMode) {
+         selectedQuestions = await getQuizQuestions("random", 1);
+      } else {
+         selectedQuestions = await getQuizQuestions("random", QUIZ_SIZE);
+      }
     }
     setQuestions(selectedQuestions);
     setLoading(false);
@@ -49,24 +67,46 @@ export default function QuizPage() {
           setQuestions(parsed.questions);
           setCurrentIndex(parsed.currentIndex || 0);
           setScore(parsed.score || 0);
+          setIsAdaptive(parsed.isAdaptive || false);
           setLoading(false);
           questionStartTimeRef.current = Date.now();
           return;
         }
       }
 
-      // Start new session
-      const res = await fetch("/api/quiz/session", { method: "POST" });
+      // Get existing AB group from localStorage to ensure consistency for returning users
+      const existingGroup = localStorage.getItem("trivia_ab_group");
+      const userProfileStr = localStorage.getItem("trivia_user_profile");
+      const userProfile = userProfileStr ? JSON.parse(userProfileStr) : null;
+
+      const res = await fetch("/api/quiz/session", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          testGroup: existingGroup,
+          userAge: userProfile?.age,
+          footballInterest: userProfile?.interest
+        })
+      });
       const data = await res.json();
       const newSessionId = data.sessionId;
-      setSessionId(newSessionId);
+      const assignedGroup = data.testGroup;
       
-      const newQuestions = await fetchQuestions();
+      if (!existingGroup && assignedGroup) {
+        localStorage.setItem("trivia_ab_group", assignedGroup);
+      }
+
+      const isAdaptiveParam = assignedGroup === "adaptive";
+      setIsAdaptive(isAdaptiveParam);
+      setSessionId(newSessionId);
+
+      const newQuestions = await fetchQuestions(undefined, isAdaptiveParam);
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
         sessionId: newSessionId,
         questions: newQuestions,
         currentIndex: 0,
-        score: 0
+        score: 0,
+        isAdaptive: isAdaptiveParam
       }));
       questionStartTimeRef.current = Date.now();
     } catch (e) {
@@ -86,10 +126,11 @@ export default function QuizPage() {
         sessionId,
         questions,
         currentIndex,
-        score
+        score,
+        isAdaptive
       }));
     }
-  }, [sessionId, questions, currentIndex, score]);
+  }, [sessionId, questions, currentIndex, score, isAdaptive]);
 
   const currentQuestion = questions[currentIndex];
 
@@ -108,10 +149,7 @@ export default function QuizPage() {
     setSelectedAnswer(option);
     setIsAnswered(true);
 
-    const isCorrect = 
-      option === currentQuestion.correct_option || 
-      (option === "true" && currentQuestion.correct_option === "verdadero") ||
-      (option === "false" && currentQuestion.correct_option === "falso");
+    const isCorrect = isAnswerCorrect(currentQuestion.question_type, option, currentQuestion.correct_option);
 
     const newScore = score + (isCorrect ? 1 : 0);
     if (isCorrect) {
@@ -133,9 +171,9 @@ export default function QuizPage() {
           isCorrect,
           usedHint: showHint,
           timeTakenSeconds,
-          isCompleted: currentIndex + 1 >= questions.length,
+          isCompleted: isAdaptive ? currentIndex + 1 >= QUIZ_SIZE : currentIndex + 1 >= questions.length,
           score: newScore,
-          totalQuestions: questions.length
+          totalQuestions: isAdaptive ? QUIZ_SIZE : questions.length
         }),
       }).catch(console.error);
     }
@@ -143,7 +181,7 @@ export default function QuizPage() {
 
   async function handleOpenEndedSubmit() {
     if (isAnswered || !openEndedAnswer.trim() || isGrading) return;
-    
+
     setIsGrading(true);
     let finalCorrect = false;
     let newScore = score;
@@ -195,19 +233,49 @@ export default function QuizPage() {
           isCorrect: finalCorrect,
           usedHint: showHint,
           timeTakenSeconds,
-          isCompleted: currentIndex + 1 >= questions.length,
+          isCompleted: isAdaptive ? currentIndex + 1 >= QUIZ_SIZE : currentIndex + 1 >= questions.length,
           score: newScore,
-          totalQuestions: questions.length
+          totalQuestions: isAdaptive ? QUIZ_SIZE : questions.length
         }),
       }).catch(console.error);
     }
   }
 
-  function handleNext() {
-    if (currentIndex + 1 >= questions.length) {
-      setShowResults(true);
-      return;
+  async function handleNext() {
+    if (isAdaptive) {
+      if (currentIndex + 1 >= QUIZ_SIZE) {
+        setShowResults(true);
+        return;
+      }
+      setIsFetchingNext(true);
+      try {
+        const res = await fetch("/api/quiz/next-adaptive", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId })
+        });
+        if (!res.ok) throw new Error("Failed to fetch adaptive question");
+        const data = await res.json();
+        if (data.question) {
+          setQuestions(prev => [...prev, data.question]);
+        } else {
+          setShowResults(true);
+          return;
+        }
+      } catch (err) {
+        console.error(err);
+        setShowResults(true);
+        return;
+      } finally {
+        setIsFetchingNext(false);
+      }
+    } else {
+      if (currentIndex + 1 >= questions.length) {
+        setShowResults(true);
+        return;
+      }
     }
+
     setCurrentIndex((i) => i + 1);
     setSelectedAnswer(null);
     setIsAnswered(false);
@@ -258,7 +326,8 @@ export default function QuizPage() {
   }
 
   if (showResults) {
-    const percentage = Math.round((score / questions.length) * 100);
+    const totalQuestions = isAdaptive ? QUIZ_SIZE : questions.length;
+    const percentage = Math.round((score / totalQuestions) * 100);
     let resultEmoji = "🎉";
     let resultMessage = "¡Increíble! ¡Eres un maestro de la trivia!";
 
@@ -279,7 +348,7 @@ export default function QuizPage() {
           <div className={styles.resultsIcon}>{resultEmoji}</div>
           <h1 className={styles.resultsTitle}>¡Quiz Completado!</h1>
           <div className={styles.resultsScore}>
-            {score} / {questions.length}
+            {score} / {isAdaptive ? QUIZ_SIZE : questions.length}
           </div>
           <p className={styles.resultsSubtitle}>{resultMessage}</p>
           <div className={styles.resultsActions}>
@@ -300,30 +369,28 @@ export default function QuizPage() {
   }
 
   // Quiz active
-  const progress = ((currentIndex + 1) / questions.length) * 100;
+  const totalQuestionsForProgress = isAdaptive ? QUIZ_SIZE : questions.length;
+  const progress = ((currentIndex + 1) / totalQuestionsForProgress) * 100;
   const typeBadgeClass =
     currentQuestion.question_type === "multiple_choice"
       ? styles.badgeMc
       : currentQuestion.question_type === "true_false"
-      ? styles.badgeTf
-      : styles.badgeOe;
+        ? styles.badgeTf
+        : styles.badgeOe;
 
   const typeLabel =
     currentQuestion.question_type === "multiple_choice"
       ? "Opción Múltiple"
       : currentQuestion.question_type === "true_false"
-      ? "Verdadero / Falso"
-      : "Pregunta Abierta";
+        ? "Verdadero / Falso"
+        : "Pregunta Abierta";
 
   let isCurrentAnswerCorrect = false;
   if (isAnswered && selectedAnswer) {
     if (currentQuestion.question_type === "open_ended") {
       isCurrentAnswerCorrect = openEndedGradingResult ?? false;
     } else {
-      isCurrentAnswerCorrect = 
-        selectedAnswer === currentQuestion.correct_option || 
-        (selectedAnswer === "true" && currentQuestion.correct_option === "verdadero") ||
-        (selectedAnswer === "false" && currentQuestion.correct_option === "falso");
+      isCurrentAnswerCorrect = isAnswerCorrect(currentQuestion.question_type, selectedAnswer, currentQuestion.correct_option);
     }
   }
 
@@ -351,7 +418,7 @@ export default function QuizPage() {
       <div className={styles.questionCard} key={animKey}>
         <div className={styles.questionMeta}>
           <span className={styles.questionNumber}>
-            Pregunta {currentIndex + 1} de {questions.length}
+            Pregunta {currentIndex + 1} de {isAdaptive ? QUIZ_SIZE : questions.length}
           </span>
           <span className={`${styles.questionTypeBadge} ${typeBadgeClass}`}>
             {typeLabel}
@@ -366,14 +433,14 @@ export default function QuizPage() {
         {currentQuestion.hint && !isAnswered && (
           <div style={{ marginBottom: '1.5rem', marginTop: '-0.5rem', textAlign: 'center' }}>
             {!showHint ? (
-              <button 
+              <button
                 onClick={() => setShowHint(true)}
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  color: 'var(--text-muted)', 
-                  fontSize: '0.85rem', 
-                  cursor: 'pointer', 
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.85rem',
+                  cursor: 'pointer',
                   textDecoration: 'underline',
                   padding: '0.5rem'
                 }}
@@ -382,8 +449,8 @@ export default function QuizPage() {
               </button>
             ) : (
               <div style={{
-                padding: '0.75rem', 
-                background: 'rgba(52, 211, 153, 0.1)', 
+                padding: '0.75rem',
+                background: 'rgba(52, 211, 153, 0.1)',
                 borderLeft: '3px solid var(--accent-emerald)',
                 borderRadius: '0 var(--radius-sm) var(--radius-sm) 0',
                 fontSize: '0.9rem',
@@ -441,10 +508,7 @@ export default function QuizPage() {
         {currentQuestion.question_type === "true_false" && (
           <div className={styles.optionsGrid}>
             {["true", "false"].map((val) => {
-              const isCorrectInDb = 
-                val === currentQuestion.correct_option || 
-                (val === "true" && currentQuestion.correct_option === "verdadero") ||
-                (val === "false" && currentQuestion.correct_option === "falso");
+              const isCorrectInDb = isAnswerCorrect(currentQuestion.question_type, val, currentQuestion.correct_option);
 
               let optionClass = styles.optionButton;
               if (isAnswered) {
@@ -504,11 +568,10 @@ export default function QuizPage() {
             )}
             {isAnswered && (
               <div
-                className={`${styles.answerReveal} ${
-                  isCurrentAnswerCorrect
+                className={`${styles.answerReveal} ${isCurrentAnswerCorrect
                     ? styles.answerCorrect
                     : styles.answerWrong
-                }`}
+                  }`}
               >
                 {isCurrentAnswerCorrect
                   ? "✅ ¡Correcto!"
@@ -522,8 +585,8 @@ export default function QuizPage() {
         {isAnswered && !isCurrentAnswerCorrect && currentQuestion.answer_explanation && (
           <div style={{
             marginTop: '2rem',
-            padding: '1rem', 
-            background: 'rgba(239, 68, 68, 0.05)', 
+            padding: '1rem',
+            background: 'rgba(239, 68, 68, 0.05)',
             borderLeft: '4px solid var(--accent-red)',
             borderRadius: '0 var(--radius-md) var(--radius-md) 0',
             color: 'var(--text-primary)',
@@ -545,11 +608,14 @@ export default function QuizPage() {
             className="btn btn-primary btn-lg"
             onClick={handleNext}
             style={{ width: "100%" }}
+            disabled={isFetchingNext}
             id="next-question-btn"
           >
-            {currentIndex + 1 >= questions.length
-              ? "Ver Resultados 🏆"
-              : "Siguiente Pregunta →"}
+            {isFetchingNext 
+              ? "Cargando..." 
+              : ((isAdaptive ? currentIndex + 1 >= QUIZ_SIZE : currentIndex + 1 >= questions.length)
+                  ? "Ver Resultados 🏆"
+                  : "Siguiente Pregunta →")}
           </button>
         </div>
       )}

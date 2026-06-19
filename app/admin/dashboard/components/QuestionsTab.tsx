@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import styles from "../../admin.module.css";
 import { Question } from "../types";
 import { renderWithBold } from "@/lib/formatters";
@@ -9,10 +9,8 @@ interface QuestionsTabProps {
   currentPage: number;
   onPageChange: (page: number) => void;
   loading: boolean;
-  onAdd: () => void;
-  onRestyle: () => void;
-  onExplain: () => void;
-  onGenerateTopics: () => void;
+  onAiCorrect: () => void;
+  onAiFixHints: () => void;
   onEdit: (q: Question) => void;
   fetchQuestions: (page?: number) => void;
   showToast: (message: string, type: "success" | "error") => void;
@@ -27,10 +25,8 @@ export default function QuestionsTab({
   currentPage,
   onPageChange,
   loading,
-  onAdd,
-  onRestyle,
-  onExplain,
-  onGenerateTopics,
+  onAiCorrect,
+  onAiFixHints,
   onEdit,
   fetchQuestions,
   showToast,
@@ -43,6 +39,29 @@ export default function QuestionsTab({
     if (type === "true_false") return "True / False";
     if (type === "open_ended") return "Open Ended";
     return type;
+  }
+
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+
+  async function handleDeleteAll() {
+    setShowDeleteAllModal(false);
+    try {
+      const res = await fetch("/api/admin/questions/bulk", {
+        method: "DELETE",
+      });
+      if (res.status === 401) {
+        window.location.href = "/admin";
+        return;
+      }
+      if (!res.ok) {
+        showToast("Delete all failed", "error");
+        return;
+      }
+      showToast("All questions deleted", "success");
+      fetchQuestions(1);
+    } catch {
+      showToast("Connection error", "error");
+    }
   }
 
   function typeBadgeClass(type: string) {
@@ -103,35 +122,28 @@ export default function QuestionsTab({
     <div className={styles.tabContent}>
       <div className={styles.tabToolbar} style={{ display: 'flex', gap: '1rem' }}>
         <button
-          className="btn btn-primary"
-          onClick={onAdd}
-          id="add-question-btn"
+          className="btn btn-secondary"
+          onClick={onAiCorrect}
         >
-          + Add Question
+          🤖 AI Correct Answers
         </button>
         <button
           className="btn btn-secondary"
-          onClick={onRestyle}
+          onClick={onAiFixHints}
         >
-          🎨 AI Style Correction
-        </button>
-        <button
-          className="btn btn-secondary"
-          onClick={onExplain}
-        >
-          🤖 Auto-Generate Explanations
-        </button>
-        <button
-          className="btn btn-secondary"
-          onClick={onGenerateTopics}
-        >
-          🏷️ Auto-Generate Topics
+          💡 AI Fix Hints & Explanations
         </button>
         <button
           className="btn btn-secondary"
           onClick={handleDownloadJSON}
         >
           ⬇️ Download JSON
+        </button>
+        <button
+          className="btn btn-danger"
+          onClick={() => setShowDeleteAllModal(true)}
+        >
+          🗑️ Delete All
         </button>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
           <input 
@@ -241,6 +253,31 @@ export default function QuestionsTab({
           >
             Next →
           </button>
+        </div>
+      )}
+
+      {showDeleteAllModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalCard} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <h3 className={styles.modalTitle}>Are you sure?</h3>
+            <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>
+              This will permanently delete ALL questions. This action cannot be undone.
+            </p>
+            <div className={styles.modalActions} style={{ justifyContent: 'center' }}>
+              <button 
+                className="btn btn-secondary" 
+                onClick={() => setShowDeleteAllModal(false)}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn btn-danger" 
+                onClick={handleDeleteAll}
+              >
+                Yes, Delete All
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

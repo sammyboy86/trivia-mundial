@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
         for (let i = 0; i < totalChunks; i++) {
           const chunk = questions.slice(i * chunkSize, (i + 1) * chunkSize);
           
+          const chunkWithIds = chunk.map((q: any, idx: number) => ({ _t_id: idx, ...q }));
+
           sendEvent("progress", {
             current: i,
             total: totalChunks,
@@ -77,7 +79,7 @@ export async function POST(request: NextRequest) {
             status: "translating",
           });
 
-          const fullPrompt = `${prompt}\n\nHere is the JSON array of questions to translate:\n\n${JSON.stringify(chunk, null, 2)}`;
+          const fullPrompt = `${prompt}\n\nCRITICAL: Keep the exact JSON structure identical. DO NOT change, remove, or omit the '_t_id' field. Return an array of objects.\n\nHere is the JSON array of questions to translate:\n\n${JSON.stringify(chunkWithIds, null, 2)}`;
 
           const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
@@ -97,20 +99,25 @@ export async function POST(request: NextRequest) {
              parsed = chunk;
           }
 
-          if (!Array.isArray(parsed)) {
-            // If it wrapped it in an object
-            if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).questions)) {
-              parsed = (parsed as any).questions;
-            } else if (parsed && typeof parsed === "object" && Array.isArray((parsed as any).generated_assessments)) {
-               parsed = (parsed as any).generated_assessments;
-            } else {
-               parsed = [parsed]; // fallback
+          let finalChunk = new Array(chunk.length).fill(null);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((q: any, idx: number) => {
+              const pos = q._t_id !== undefined ? q._t_id : idx;
+              if (pos >= 0 && pos < chunk.length) {
+                finalChunk[pos] = q;
+                delete finalChunk[pos]._t_id;
+              }
+            });
+            for (let j = 0; j < chunk.length; j++) {
+              if (!finalChunk[j]) finalChunk[j] = chunk[j];
             }
+          } else {
+            finalChunk = chunk;
           }
 
           sendEvent("chunk", {
             index: i,
-            result: parsed,
+            result: finalChunk,
           });
         }
 

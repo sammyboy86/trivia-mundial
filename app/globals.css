@@ -359,12 +359,17 @@ input, textarea, select {
   }
 
   .container {
-    padding: 0 0.75rem;
+    padding: 0 1rem;
   }
 
   .btn-lg {
     padding: 0.875rem 2rem;
     font-size: 1rem;
+    width: 100%;
+  }
+
+  .btn {
+    width: 100%;
   }
 
   .card {

@@ -9,15 +9,15 @@ import QuestionsTab from "./components/QuestionsTab";
 import MarkdownUploadTab from "./components/MarkdownUploadTab";
 import ImportTab from "./components/ImportTab";
 import QuestionModal from "./components/Modals/QuestionModal";
-import RestyleModal from "./components/Modals/RestyleModal";
-import ExplainModal from "./components/Modals/ExplainModal";
-import TopicPromptModal from "./components/Modals/TopicPromptModal";
+import AiCorrectModal from "./components/Modals/AiCorrectModal";
+import AiFixHintsModal from "./components/Modals/AiFixHintsModal";
 import SessionsTab from "./components/SessionsTab";
 import JsonManipulationTab from "./components/JsonManipulationTab";
 import ThematicClusteringTab from "./components/ThematicClusteringTab";
+import KcGeneratorTab from "./components/KcGeneratorTab";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"questions" | "markdown" | "import" | "sessions" | "manipulate" | "clustering">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "markdown" | "import" | "sessions" | "manipulate" | "clustering" | "kc-generator">("questions");
   
   // Shared State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -35,9 +35,8 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-  const [showRestyleModal, setShowRestyleModal] = useState(false);
-  const [showExplainModal, setShowExplainModal] = useState(false);
-  const [showTopicModal, setShowTopicModal] = useState(false);
+  const [showAiCorrectModal, setShowAiCorrectModal] = useState(false);
+  const [showAiFixHintsModal, setShowAiFixHintsModal] = useState(false);
   const [searchId, setSearchId] = useState("");
 
   // Markdown State
@@ -177,6 +176,13 @@ export default function AdminDashboard() {
           >
             🌌 Thematic Clustering
           </button>
+          <button
+            className={`${styles.tab} ${activeTab === "kc-generator" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("kc-generator")}
+            id="tab-kc-generator"
+          >
+            🧠 KC Generator
+          </button>
         </div>
 
         {/* Content */}
@@ -187,10 +193,8 @@ export default function AdminDashboard() {
             currentPage={currentPage}
             onPageChange={fetchQuestions}
             loading={loading}
-            onAdd={() => setShowQuestionModal(true)}
-            onRestyle={() => setShowRestyleModal(true)}
-            onExplain={() => setShowExplainModal(true)}
-            onGenerateTopics={() => setShowTopicModal(true)}
+            onAiCorrect={() => setShowAiCorrectModal(true)}
+            onAiFixHints={() => setShowAiFixHintsModal(true)}
             onEdit={(q) => {
               setEditingQuestion(q);
               setShowQuestionModal(true);
@@ -240,6 +244,12 @@ export default function AdminDashboard() {
             showToast={showToast}
           />
         )}
+
+        {activeTab === "kc-generator" && (
+          <KcGeneratorTab
+            showToast={showToast}
+          />
+        )}
       </div>
 
       {showQuestionModal && (
@@ -254,31 +264,21 @@ export default function AdminDashboard() {
         />
       )}
 
-      {showRestyleModal && (
-        <RestyleModal
-          onClose={() => setShowRestyleModal(false)}
+      {showAiCorrectModal && (
+        <AiCorrectModal
+          onClose={() => setShowAiCorrectModal(false)}
           onComplete={() => {
-            setShowRestyleModal(false);
+            setShowAiCorrectModal(false);
             fetchQuestions();
           }}
         />
       )}
 
-      {showExplainModal && (
-        <ExplainModal
-          onClose={() => setShowExplainModal(false)}
+      {showAiFixHintsModal && (
+        <AiFixHintsModal
+          onClose={() => setShowAiFixHintsModal(false)}
           onComplete={() => {
-            setShowExplainModal(false);
-            fetchQuestions();
-          }}
-        />
-      )}
-
-      {showTopicModal && (
-        <TopicPromptModal
-          onClose={() => setShowTopicModal(false)}
-          onComplete={() => {
-            setShowTopicModal(false);
+            setShowAiFixHintsModal(false);
             fetchQuestions();
           }}
         />

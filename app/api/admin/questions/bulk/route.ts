@@ -174,3 +174,28 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: `Invalid request body: ${(e as Error).message}` }, { status: 400 });
   }
 }
+
+// DELETE — Remove all questions
+export async function DELETE(request: NextRequest) {
+  if (!validateSession(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    // Delete all questions by targeting all non-null IDs
+    const { error } = await supabaseAdmin
+      .from("questions")
+      .delete()
+      .not("id", "is", null);
+
+    if (error) {
+      console.error("Failed to delete all questions", error);
+      return NextResponse.json({ error: "Failed to delete all questions" }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    console.error("Error deleting all questions", e);
+    return NextResponse.json({ error: "Server error" }, { status: 500 });
+  }
+}

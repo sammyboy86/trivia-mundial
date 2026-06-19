@@ -1,7 +1,54 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
 export default function Home() {
+  const router = useRouter();
+  const [hasSession, setHasSession] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [age, setAge] = useState("");
+  const [interest, setInterest] = useState("4");
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("trivia_session_data");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed.sessionId && parsed.questions && parsed.questions.length > 0) {
+          if (parsed.currentIndex < parsed.questions.length) {
+            setHasSession(true);
+          }
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
+  const handleStartNew = () => {
+    const profile = localStorage.getItem("trivia_user_profile");
+    if (!profile) {
+      setShowOnboarding(true);
+    } else {
+      localStorage.removeItem("trivia_session_data");
+      router.push(`/quiz`);
+    }
+  };
+
+  const handleOnboardingSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    localStorage.setItem("trivia_user_profile", JSON.stringify({
+      age: parseInt(age, 10) || null,
+      interest: parseInt(interest, 10)
+    }));
+    setShowOnboarding(false);
+    localStorage.removeItem("trivia_session_data");
+    router.push(`/quiz`);
+  };
+
   return (
     <main className={styles.hero}>
       <div className={styles["hero-badge"]}>
@@ -20,11 +67,77 @@ export default function Home() {
         Opción múltiple, verdadero o falso y preguntas abiertas — ¿cuánto sabes realmente?
       </p>
 
-      <div className={styles["hero-actions"]}>
-        <Link href="/quiz" className="btn btn-primary btn-lg" id="start-quiz-btn">
-          🎯 Iniciar Quiz
-        </Link>
+      <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "center" }}>
       </div>
+
+      <div className={styles["hero-actions"]}>
+        {hasSession ? (
+          <>
+            <Link href={`/quiz`} className="btn btn-primary btn-lg" id="resume-quiz-btn">
+              ▶️ Reanudar Quiz
+            </Link>
+            <button 
+              onClick={handleStartNew} 
+              className="btn btn-secondary btn-lg" 
+              id="start-new-quiz-btn"
+            >
+              🔄 Empezar de cero
+            </button>
+          </>
+        ) : (
+          <button onClick={handleStartNew} className="btn btn-primary btn-lg" id="start-quiz-btn">
+            🎯 Iniciar Quiz
+          </button>
+        )}
+      </div>
+
+      {showOnboarding && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
+          <div style={{ background: 'var(--bg-secondary)', padding: '2rem', borderRadius: 'var(--radius-lg)', maxWidth: '400px', width: '100%', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}>
+            <h2 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>¡Bienvenido a Trivia Mundial!</h2>
+            <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>Antes de empezar, cuéntanos un poco sobre ti.</p>
+            <form onSubmit={handleOnboardingSubmit}>
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Tu edad:</label>
+                <input 
+                  type="number" 
+                  min="5" max="100" 
+                  value={age} 
+                  onChange={(e) => setAge(e.target.value)} 
+                  required
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
+                />
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Interés en el fútbol (1 = Nada, 4 = Fanático):</label>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  {[1, 2, 3, 4].map(num => (
+                    <label key={num} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer', color: 'var(--text-primary)' }}>
+                      <input 
+                        type="radio" 
+                        name="interest" 
+                        value={num} 
+                        checked={interest === num.toString()} 
+                        onChange={(e) => setInterest(e.target.value)} 
+                        style={{ accentColor: 'var(--accent-primary)' }}
+                      />
+                      {num}
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button type="button" onClick={() => setShowOnboarding(false)} className="btn btn-secondary" style={{ flex: 1 }}>
+                  Cancelar
+                </button>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
+                  ¡Comenzar!
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className={styles["hero-features"]}>
         <div className={styles["hero-feature"]}>

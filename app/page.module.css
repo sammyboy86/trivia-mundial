@@ -147,6 +147,18 @@
     padding: 1rem;
   }
 
+  .hero-title {
+    font-size: clamp(2.2rem, 10vw, 3rem);
+  }
+
+  .hero-subtitle {
+    margin-bottom: 2rem;
+  }
+
+  .hero-actions {
+    width: 100%;
+  }
+
   .hero-stats {
     gap: 1.5rem;
   }

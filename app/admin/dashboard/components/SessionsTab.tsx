@@ -20,6 +20,9 @@ interface QuizSession {
   completed: boolean;
   score: number;
   total_questions: number;
+  test_group: string;
+  user_age?: number;
+  football_interest?: number;
   quiz_answers: QuizAnswer[];
 }
 
@@ -72,9 +75,20 @@ export default function SessionsTab() {
                   </span>
                 </div>
                 <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                  <span style={{ 
+                    padding: "0.2rem 0.5rem", 
+                    borderRadius: "4px", 
+                    fontSize: "0.8rem", 
+                    fontWeight: "bold",
+                    background: session.test_group === 'adaptive' ? "rgba(168, 85, 247, 0.2)" : "rgba(100, 116, 139, 0.2)",
+                    color: session.test_group === 'adaptive' ? "var(--accent-purple, #a855f7)" : "var(--text-secondary)"
+                  }}>
+                    {session.test_group === 'adaptive' ? "A/B: Adaptive" : "A/B: Control"}
+                  </span>
                   <span>{session.completed ? "✅ Completed" : "⏳ In Progress"}</span>
                   {session.completed && <span>Score: {session.score}/{session.total_questions}</span>}
                   <span>⏱️ {durationSeconds}s</span>
+                  {session.user_age && <span title="Edad e interés en el fútbol" style={{ color: "var(--accent-primary)", fontWeight: "bold" }}>👤 {session.user_age}a (Nivel {session.football_interest})</span>}
                   <span>{session.quiz_answers.length} answers</span>
                   <span style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.2s" }}>▼</span>
                 </div>
