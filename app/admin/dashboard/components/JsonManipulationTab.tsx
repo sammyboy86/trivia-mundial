@@ -13,8 +13,10 @@ export default function JsonManipulationTab({
   const [sourceText, setSourceText] = useState("");
   const [parsedData, setParsedData] = useState<any[]>([]);
   const [modifiedData, setModifiedData] = useState<any[]>([]);
+  const [processedOriginals, setProcessedOriginals] = useState<any[]>([]);
   
   const [selectedFields, setSelectedFields] = useState<Set<string>>(new Set());
+  const [fieldsToUpdate, setFieldsToUpdate] = useState<Set<string>>(new Set());
   const [prompt, setPrompt] = useState("Add a 'difficulty' field to each question based on how hard it is (easy, medium, hard).");
   
   const [sampleSize, setSampleSize] = useState(5);
@@ -91,6 +93,13 @@ export default function JsonManipulationTab({
     setSelectedFields(next);
   }
 
+  function toggleUpdateField(field: string) {
+    const next = new Set(fieldsToUpdate);
+    if (next.has(field)) next.delete(field);
+    else next.add(field);
+    setFieldsToUpdate(next);
+  }
+
   async function handleProcess(isSample: boolean = false) {
     if (parsedData.length === 0) return;
     if (selectedFields.size === 0) {
@@ -100,6 +109,7 @@ export default function JsonManipulationTab({
 
     setProcessing(true);
     setModifiedData([]);
+    setProcessedOriginals([]);
     setProgress({ current: 0, total: 100 });
 
     try {
@@ -118,10 +128,14 @@ export default function JsonManipulationTab({
         return f;
       });
 
+      const finalPrompt = fieldsToUpdate.size > 0 
+        ? `${prompt}\n\nIMPORTANT: Only modify or return these specific fields: ${Array.from(fieldsToUpdate).join(", ")}`
+        : prompt;
+
       const res = await fetch("/api/admin/questions/manipulate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ questions: filteredQs, prompt })
+        body: JSON.stringify({ questions: filteredQs, prompt: finalPrompt })
       });
       
       if (!res.ok) throw new Error("Processing failed");
@@ -149,8 +163,6 @@ export default function JsonManipulationTab({
               if (eventType === "progress") setProgress(data);
               else if (eventType === "chunk") newQs = [...newQs, ...(data.result || [])];
               else if (eventType === "complete") {
-                // Merge LLM outputs back into the original parsed data
-                // The LLM was instructed to keep exact number of objects.
                 const merged = targetData.map((orig, i) => {
                   const llmResult = newQs[i] || {};
                   
@@ -160,18 +172,35 @@ export default function JsonManipulationTab({
                   let origMetadata = orig.metadata || {};
                   let newMetadata = { ...origMetadata };
                   
-                  const combined = { ...orig, ...llmResult };
+                  const combined = { ...orig };
                   
-                  Object.keys(combined).forEach(k => {
-                    if (!standardColumns.includes(k)) {
-                      newMetadata[k] = combined[k];
-                      // Don't delete from combined so it can be previewed easily, but it will be safely nested on import
-                    }
-                  });
+                  if (fieldsToUpdate.size > 0) {
+                    // Only apply modifications to selected fields
+                    fieldsToUpdate.forEach(k => {
+                      if (llmResult[k] !== undefined) {
+                        combined[k] = llmResult[k];
+                        if (!standardColumns.includes(k)) {
+                          newMetadata[k] = llmResult[k];
+                        }
+                      }
+                    });
+                  } else {
+                    // Default behavior: apply all fields returned by LLM
+                    Object.keys(llmResult).forEach(k => {
+                      combined[k] = llmResult[k];
+                      if (!standardColumns.includes(k)) {
+                        newMetadata[k] = llmResult[k];
+                      }
+                    });
+                  }
+                  
+                  // Ensure ID is never altered by the LLM
+                  combined.id = orig.id;
                   
                   return { ...combined, metadata: newMetadata };
                 });
                 
+                setProcessedOriginals(targetData);
                 setModifiedData(merged);
                 showToast("LLM Processing complete!", "success");
                 setProgress({ current: 0, total: 0 });
@@ -259,6 +288,23 @@ export default function JsonManipulationTab({
             ))}
           </div>
 
+          <div style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+            Select which existing fields to <strong>apply modifications to</strong> (leave empty to allow the LLM to modify or create any field):
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            {availableFields.map(f => (
+              <label key={`update-${f}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-secondary)', padding: '0.4rem 0.75rem', borderRadius: '4px', cursor: 'pointer', border: '1px solid var(--border)' }}>
+                <input 
+                  type="checkbox" 
+                  checked={fieldsToUpdate.has(f)} 
+                  onChange={() => toggleUpdateField(f)}
+                  style={{ accentColor: '#ec4899' }}
+                />
+                <code style={{ fontSize: '0.85rem' }}>{f}</code>
+              </label>
+            ))}
+          </div>
+
           <div className="form-group">
             <label className="form-label">Custom Instruction Prompt</label>
             <textarea 
@@ -305,18 +351,34 @@ export default function JsonManipulationTab({
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
-              Review the modified JSON. New/unknown fields will be automatically packed into the <strong>metadata</strong> column.
+              Review the modified JSON (Before & After). New/unknown fields will be automatically packed into the <strong>metadata</strong> column.
             </div>
             <button className="btn btn-primary" onClick={handleImport} disabled={importing}>
               {importing ? "Importing..." : "🚀 Upsert to Database"}
             </button>
           </div>
-          <div style={{ background: '#111', padding: '1rem', borderRadius: '8px', overflow: 'auto', maxHeight: '500px' }}>
-            <pre style={{ margin: 0, fontSize: '0.85rem', color: '#a6accd' }}>
-              {JSON.stringify(modifiedData.slice(0, 5), null, 2)}
-            </pre>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {modifiedData.slice(0, 5).map((modItem, i) => {
+              const origItem = processedOriginals[i] || {};
+              return (
+                <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div style={{ background: 'rgba(0,0,0,0.4)', padding: '1rem', borderRadius: '8px', overflow: 'auto', maxHeight: '400px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '0.5rem', fontWeight: 600 }}>BEFORE</div>
+                    <pre style={{ margin: 0, fontSize: '0.85rem', color: '#9ca3af' }}>
+                      {JSON.stringify(origItem, null, 2)}
+                    </pre>
+                  </div>
+                  <div style={{ background: '#111', padding: '1rem', borderRadius: '8px', overflow: 'auto', maxHeight: '400px', border: '1px solid var(--border)' }}>
+                    <div style={{ color: 'var(--accent-primary)', fontSize: '0.8rem', marginBottom: '0.5rem', fontWeight: 600 }}>AFTER</div>
+                    <pre style={{ margin: 0, fontSize: '0.85rem', color: '#a6accd' }}>
+                      {JSON.stringify(modItem, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              );
+            })}
             {modifiedData.length > 5 && (
-              <div style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-muted)' }}>
+              <div style={{ textAlign: 'center', marginTop: '0.5rem', color: 'var(--text-muted)' }}>
                 ...and {modifiedData.length - 5} more items not shown.
               </div>
             )}

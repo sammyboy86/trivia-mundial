@@ -57,8 +57,8 @@ export default function MarkdownUploadTab({
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      if (!file.name.endsWith(".md") && !file.name.endsWith(".markdown")) {
-        showToast(`Skipped ${file.name}: Not a markdown file`, "error");
+      if (!file.name.endsWith(".md") && !file.name.endsWith(".markdown") && !file.name.endsWith(".html") && !file.name.endsWith(".htm")) {
+        showToast(`Skipped ${file.name}: Not a supported file type`, "error");
         errorCount++;
         continue;
       }
@@ -205,7 +205,7 @@ export default function MarkdownUploadTab({
         <p className={styles.uploadText}>
           {uploading
             ? "Uploading..."
-            : "Drag & drop .md files here, or click to browse"}
+            : "Drag & drop .md or .html files here, or click to browse"}
         </p>
         <label
           className={`btn btn-primary ${uploading ? "btn-disabled" : ""}`}
@@ -216,14 +216,14 @@ export default function MarkdownUploadTab({
         <input
           id="md-file-input"
           type="file"
-          accept=".md,.markdown"
+          accept=".md,.markdown,.html,.htm"
           multiple
           className={styles.uploadInput}
           onChange={(e) => handleFileUpload(e.target.files)}
           disabled={uploading}
         />
         <p className={styles.uploadHint}>
-          Max 5MB per file · .md and .markdown only
+          Max 5MB per file · .md, .markdown, and .html
         </p>
       </div>
 

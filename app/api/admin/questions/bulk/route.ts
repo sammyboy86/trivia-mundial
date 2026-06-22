@@ -87,10 +87,34 @@ export async function POST(request: NextRequest) {
       if (q.metadata) insertData.metadata = q.metadata;
 
       if (normalizedType === "multiple_choice") {
-        insertData.option_a = q.option_a ? String(q.option_a).trim() : (q.options?.a ? String(q.options.a).trim() : "");
-        insertData.option_b = q.option_b ? String(q.option_b).trim() : (q.options?.b ? String(q.options.b).trim() : "");
-        insertData.option_c = q.option_c ? String(q.option_c).trim() : (q.options?.c ? String(q.options.c).trim() : "");
-        insertData.option_d = q.option_d ? String(q.option_d).trim() : (q.options?.d ? String(q.options.d).trim() : "");
+        let optA = q.option_a ? String(q.option_a).trim() : (q.options?.a ? String(q.options.a).trim() : "");
+        let optB = q.option_b ? String(q.option_b).trim() : (q.options?.b ? String(q.options.b).trim() : "");
+        let optC = q.option_c ? String(q.option_c).trim() : (q.options?.c ? String(q.options.c).trim() : "");
+        let optD = q.option_d ? String(q.option_d).trim() : (q.options?.d ? String(q.options.d).trim() : "");
+
+        const currentCorrectLetter = insertData.correct_option;
+        const optionsMap: Record<string, string> = { a: optA, b: optB, c: optC, d: optD };
+        
+        if (["a", "b", "c", "d"].includes(currentCorrectLetter)) {
+          const keys = ["a", "b", "c", "d"];
+          for (let i = keys.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [keys[i], keys[j]] = [keys[j], keys[i]];
+          }
+          
+          insertData.option_a = optionsMap[keys[0]];
+          insertData.option_b = optionsMap[keys[1]];
+          insertData.option_c = optionsMap[keys[2]];
+          insertData.option_d = optionsMap[keys[3]];
+          
+          const newCorrectIndex = keys.indexOf(currentCorrectLetter);
+          insertData.correct_option = ["a", "b", "c", "d"][newCorrectIndex];
+        } else {
+          insertData.option_a = optA;
+          insertData.option_b = optB;
+          insertData.option_c = optC;
+          insertData.option_d = optD;
+        }
       } else if (normalizedType === "true_false") {
         insertData.option_a = "True";
         insertData.option_b = "False";

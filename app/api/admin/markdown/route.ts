@@ -10,7 +10,7 @@ import crypto from "crypto";
 
 const BUCKET_NAME = "markdown-uploads";
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_EXTENSIONS = [".md", ".markdown"];
+const ALLOWED_EXTENSIONS = [".md", ".markdown", ".html", ".htm"];
 
 // Helper to validate admin session
 function validateSession(request: NextRequest): boolean {
@@ -28,7 +28,7 @@ function validateMarkdownFile(
   // Validate extension (allow-list)
   const ext = filename.toLowerCase().slice(filename.lastIndexOf("."));
   if (!ALLOWED_EXTENSIONS.includes(ext)) {
-    return { valid: false, error: "Only .md and .markdown files are allowed" };
+    return { valid: false, error: "Only .md, .markdown, and .html files are allowed" };
   }
 
   // Validate size
@@ -111,18 +111,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    let finalContent = content;
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    if (ext === ".html" || ext === ".htm") {
+      // Process HTML: strip scripts, styles, and all HTML tags to leave only important text
+      const decoder = new TextDecoder("utf-8");
+      let htmlString = decoder.decode(content);
+      
+      htmlString = htmlString
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // remove script tags and content
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')   // remove style tags and content
+        .replace(/<[^>]+>/g, ' ')                                           // remove all other html tags (ignoring links etc)
+        .replace(/\s+/g, ' ')                                               // collapse whitespace
+        .trim();
+        
+      const encoder = new TextEncoder();
+      finalContent = encoder.encode(htmlString).buffer;
+    }
+
     // Generate unique filename to prevent path traversal and overwrites
     const uniqueId = crypto.randomUUID();
     const safeFilename = `${uniqueId}.md`;
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from(BUCKET_NAME)
-      .upload(safeFilename, content, {
+      .upload(safeFilename, finalContent, {
         contentType: "text/markdown",
         upsert: false,
         metadata: {
           originalName: file.name.replace(/[^\w.\-_ ]/g, "_"),
-          size: content.byteLength.toString(),
+          size: finalContent.byteLength.toString(),
         },
       });
 
@@ -140,7 +158,7 @@ export async function POST(request: NextRequest) {
         file: {
           storageName: safeFilename,
           originalName: file.name.replace(/[^\w.\-_ ]/g, "_"),
-          size: content.byteLength,
+          size: finalContent.byteLength,
         },
       },
       { status: 201 }

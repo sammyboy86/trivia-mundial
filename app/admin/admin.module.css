@@ -114,6 +114,22 @@
   margin-bottom: 1.5rem;
 }
 
+.questionModalCard {
+  max-width: 900px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+.fullWidth {
+  grid-column: 1 / -1;
+}
+
+
 .modalForm {
   display: flex;
   flex-direction: column;
