@@ -59,12 +59,15 @@ export default function Home() {
       <div className={styles["hero-icon"]}>🌍</div>
 
       <h1 className={styles["hero-title"]}>
-        <span className={styles["hero-title-gradient"]}>Trivia Mundial</span>
+        <span className={styles["hero-title-gradient"]}>Trivia Mundialera</span>
       </h1>
 
       <p className={styles["hero-subtitle"]}>
-        Ponte a prueba con preguntas de todo el mundo.
-        Opción múltiple, verdadero o falso y preguntas abiertas — ¿cuánto sabes realmente?
+        ⚽ Responde a este quiz adaptativo para estudiar las reglas del juego y estructura del torneo de la <strong>copa del mundo 2026</strong>. 🏆
+        <br /><br />
+        🎓 Además, tu interacción me apoya en la realización de mi <strong>tesis de licenciatura</strong> sobre <strong>aprendizaje adaptativo</strong>.
+        <br /><br />
+        <span style={{ fontStyle: "italic", opacity: 0.8 }}>— Samuel Leidenberger Bitrán</span>
       </p>
 
       <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "center" }}>
@@ -76,13 +79,6 @@ export default function Home() {
             <Link href={`/quiz`} className="btn btn-primary btn-lg" id="resume-quiz-btn">
               ▶️ Reanudar Quiz
             </Link>
-            <button 
-              onClick={handleStartNew} 
-              className="btn btn-secondary btn-lg" 
-              id="start-new-quiz-btn"
-            >
-              🔄 Empezar de cero
-            </button>
           </>
         ) : (
           <button onClick={handleStartNew} className="btn btn-primary btn-lg" id="start-quiz-btn">
@@ -94,16 +90,16 @@ export default function Home() {
       {showOnboarding && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(5px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '1rem' }}>
           <div style={{ background: 'var(--bg-secondary)', padding: '2rem', borderRadius: 'var(--radius-lg)', maxWidth: '400px', width: '100%', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}>
-            <h2 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>¡Bienvenido a Trivia Mundial!</h2>
+            <h2 style={{ marginBottom: '0.5rem', color: 'var(--text-primary)' }}>¡Bienvenido a Trivia Mundialera!</h2>
             <p style={{ marginBottom: '1.5rem', color: 'var(--text-secondary)' }}>Antes de empezar, cuéntanos un poco sobre ti.</p>
             <form onSubmit={handleOnboardingSubmit}>
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', color: 'var(--text-primary)' }}>Tu edad:</label>
-                <input 
-                  type="number" 
-                  min="5" max="100" 
-                  value={age} 
-                  onChange={(e) => setAge(e.target.value)} 
+                <input
+                  type="number"
+                  min="5" max="100"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
                   required
                   style={{ width: '100%', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--bg-primary)', color: 'var(--text-primary)' }}
                 />
@@ -113,12 +109,12 @@ export default function Home() {
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
                   {[1, 2, 3, 4].map(num => (
                     <label key={num} style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', cursor: 'pointer', color: 'var(--text-primary)' }}>
-                      <input 
-                        type="radio" 
-                        name="interest" 
-                        value={num} 
-                        checked={interest === num.toString()} 
-                        onChange={(e) => setInterest(e.target.value)} 
+                      <input
+                        type="radio"
+                        name="interest"
+                        value={num}
+                        checked={interest === num.toString()}
+                        onChange={(e) => setInterest(e.target.value)}
                         style={{ accentColor: 'var(--accent-primary)' }}
                       />
                       {num}

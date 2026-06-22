@@ -8,8 +8,10 @@ import { getQuizQuestions } from "@/lib/question-selection";
 import { renderWithBold } from "@/lib/formatters";
 import styles from "./quiz.module.css";
 
-const QUIZ_SIZE = 20;
+const QUIZ_SIZE = 30;
 const SESSION_STORAGE_KEY = "trivia_session_data";
+const QUESTIONS_PER_LEVEL = 6;
+const TOTAL_LEVELS = 5;
 
 function isAnswerCorrect(questionType: string, selected: string, correctOpt: string) {
   if (questionType === "true_false") {
@@ -39,6 +41,7 @@ export default function QuizPage() {
   const [animKey, setAnimKey] = useState(0);
   const [isAdaptive, setIsAdaptive] = useState(false);
   const [isFetchingNext, setIsFetchingNext] = useState(false);
+  const [quizView, setQuizView] = useState<"map" | "question" | "level_complete">("map");
 
   const questionStartTimeRef = useRef<number>(Date.now());
 
@@ -68,6 +71,7 @@ export default function QuizPage() {
           setCurrentIndex(parsed.currentIndex || 0);
           setScore(parsed.score || 0);
           setIsAdaptive(parsed.isAdaptive || false);
+          setQuizView("map");
           setLoading(false);
           questionStartTimeRef.current = Date.now();
           return;
@@ -108,6 +112,7 @@ export default function QuizPage() {
         score: 0,
         isAdaptive: isAdaptiveParam
       }));
+      setQuizView("map");
       questionStartTimeRef.current = Date.now();
     } catch (e) {
       console.error("Failed to init session", e);
@@ -276,7 +281,8 @@ export default function QuizPage() {
       }
     }
 
-    setCurrentIndex((i) => i + 1);
+    const nextIndex = currentIndex + 1;
+    setCurrentIndex(nextIndex);
     setSelectedAnswer(null);
     setIsAnswered(false);
     setShowHint(false);
@@ -284,21 +290,19 @@ export default function QuizPage() {
     setOpenEndedGradingResult(null);
     setAnimKey((k) => k + 1);
     questionStartTimeRef.current = Date.now();
+
+    if (nextIndex % QUESTIONS_PER_LEVEL === 0 && nextIndex < QUIZ_SIZE) {
+      setQuizView("level_complete");
+    }
   }
 
-  function handlePlayAgain() {
-    localStorage.removeItem(SESSION_STORAGE_KEY);
-    setSessionId(null);
-    setCurrentIndex(0);
-    setScore(0);
-    setSelectedAnswer(null);
-    setIsAnswered(false);
-    setShowHint(false);
-    setOpenEndedAnswer("");
-    setOpenEndedGradingResult(null);
-    setShowResults(false);
-    setAnimKey(0);
-    initSession();
+  function handleRestartLevel(levelNum: number) {
+    if (!confirm(`¿Estás seguro de que quieres reiniciar el Nivel ${levelNum}? Perderás el progreso actual de este nivel.`)) return;
+    const newIndex = (levelNum - 1) * QUESTIONS_PER_LEVEL;
+    setCurrentIndex(newIndex);
+    if (levelNum === 1) setScore(0);
+    setQuizView("question");
+    questionStartTimeRef.current = Date.now();
   }
 
   if (loading) {
@@ -354,10 +358,13 @@ export default function QuizPage() {
           <div className={styles.resultsActions}>
             <button
               className="btn btn-primary btn-lg"
-              onClick={handlePlayAgain}
-              id="play-again-btn"
+              onClick={() => {
+                setShowResults(false);
+                setQuizView("map");
+              }}
+              id="back-to-map-btn"
             >
-              🔄 Jugar de nuevo
+              🗺️ Volver al Mapa
             </button>
             <Link href="/" className="btn btn-secondary" id="home-btn">
               ← Inicio
@@ -370,7 +377,10 @@ export default function QuizPage() {
 
   // Quiz active
   const totalQuestionsForProgress = isAdaptive ? QUIZ_SIZE : questions.length;
-  const progress = ((currentIndex + 1) / totalQuestionsForProgress) * 100;
+  const currentLevel = Math.floor(currentIndex / QUESTIONS_PER_LEVEL) + 1;
+  const questionInLevel = (currentIndex % QUESTIONS_PER_LEVEL) + 1;
+  const progress = (questionInLevel / QUESTIONS_PER_LEVEL) * 100;
+
   const typeBadgeClass =
     currentQuestion.question_type === "multiple_choice"
       ? styles.badgeMc
@@ -406,24 +416,127 @@ export default function QuizPage() {
         </div>
       </div>
 
-      {/* Progress */}
-      <div className={styles.progressBar}>
-        <div
-          className={styles.progressFill}
-          style={{ width: `${progress}%` }}
-        ></div>
-      </div>
-
-      {/* Question Card */}
-      <div className={styles.questionCard} key={animKey}>
-        <div className={styles.questionMeta}>
-          <span className={styles.questionNumber}>
-            Pregunta {currentIndex + 1} de {isAdaptive ? QUIZ_SIZE : questions.length}
-          </span>
-          <span className={`${styles.questionTypeBadge} ${typeBadgeClass}`}>
-            {typeLabel}
-          </span>
+      {/* Views */}
+      {quizView === "map" && (
+        <div style={{ marginTop: "2rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <h2 style={{ textAlign: "center", marginBottom: "1rem" }}>Mapa del Torneo</h2>
+          {Array.from({ length: TOTAL_LEVELS }).map((_, i) => {
+            const levelNum = i + 1;
+            const completedLevels = Math.floor(currentIndex / QUESTIONS_PER_LEVEL);
+            const isCompleted = levelNum <= completedLevels;
+            const isCurrent = levelNum === completedLevels + 1;
+            const isLocked = levelNum > completedLevels + 1;
+            
+            return (
+              <div 
+                key={levelNum} 
+                style={{ 
+                  padding: "1.5rem", 
+                  borderRadius: "var(--radius-lg)", 
+                  border: "1px solid var(--border)",
+                  background: isCurrent ? "var(--bg-secondary)" : "var(--bg-primary)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  opacity: isLocked ? 0.6 : 1
+                }}
+              >
+                <div>
+                  <h3 style={{ margin: 0, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                    Nivel {levelNum} {isCompleted ? "✅" : isLocked ? "🔒" : "📍"}
+                  </h3>
+                  <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "0.25rem" }}>
+                    {QUESTIONS_PER_LEVEL} Preguntas
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                  {isCompleted ? (
+                    <>
+                      <span style={{ color: "var(--accent-emerald)", fontWeight: "bold" }}>Completado</span>
+                      <button 
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleRestartLevel(levelNum)}
+                      >
+                        🔄 Reiniciar
+                      </button>
+                    </>
+                  ) : isCurrent ? (
+                    <>
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => {
+                          setQuizView("question");
+                          questionStartTimeRef.current = Date.now();
+                        }}
+                      >
+                        {currentIndex % QUESTIONS_PER_LEVEL === 0 ? "Comenzar" : "Continuar"}
+                      </button>
+                      {currentIndex % QUESTIONS_PER_LEVEL !== 0 && (
+                        <button 
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleRestartLevel(levelNum)}
+                        >
+                          🔄 Reiniciar
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <span style={{ color: "var(--text-muted)" }}>Bloqueado</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
+      )}
+
+      {quizView === "level_complete" && (
+        <div style={{ marginTop: "3rem", textAlign: "center", padding: "2rem", background: "var(--bg-secondary)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
+          <h2>¡Nivel {currentLevel - 1} Completado!</h2>
+          <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>
+            ¡Gran trabajo! Has avanzado al siguiente nivel del torneo.
+          </p>
+          <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
+            <button 
+              className="btn btn-primary btn-lg" 
+              onClick={() => {
+                setQuizView("question");
+                questionStartTimeRef.current = Date.now();
+              }}
+            >
+              Siguiente Nivel ➡️
+            </button>
+            <button 
+              className="btn btn-secondary btn-lg" 
+              onClick={() => setQuizView("map")}
+            >
+              Ir al Mapa
+            </button>
+          </div>
+        </div>
+      )}
+
+      {quizView === "question" && (
+        <>
+          {/* Progress */}
+          <div className={styles.progressBar}>
+            <div
+              className={styles.progressFill}
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+
+          {/* Question Card */}
+          <div className={styles.questionCard} key={animKey}>
+            <div className={styles.questionMeta}>
+              <span className={styles.questionNumber}>
+                Nivel {currentLevel} &bull; Pregunta {questionInLevel} de {QUESTIONS_PER_LEVEL}
+              </span>
+              <span className={`${styles.questionTypeBadge} ${typeBadgeClass}`}>
+                {typeLabel}
+              </span>
+            </div>
 
         <h2 className={styles.questionText} style={{ whiteSpace: "pre-line", lineHeight: "1.6" }}>
           {renderWithBold(currentQuestion.question_text.replace(/\.\s+/g, ".\n\n"))}
@@ -618,6 +731,8 @@ export default function QuizPage() {
                   : "Siguiente Pregunta →")}
           </button>
         </div>
+      )}
+        </>
       )}
     </main>
   );
