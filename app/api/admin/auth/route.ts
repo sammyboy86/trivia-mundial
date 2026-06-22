@@ -21,8 +21,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate against server-side credentials
-    const expectedUsername = process.env.ADMIN_USERNAME;
-    const expectedPasswordHash = process.env.ADMIN_PASSWORD_HASH;
+    // Clean up variables in case deployment (e.g., Railway) injects quotes or escapes dollar signs
+    const expectedUsername = process.env.ADMIN_USERNAME?.replace(/^['"]|['"]$/g, '');
+    const expectedPasswordHash = process.env.ADMIN_PASSWORD_HASH?.replace(/^['"]|['"]$/g, '')?.replace(/\\\$/g, '$');
 
     if (!expectedUsername || !expectedPasswordHash) {
       console.error("Admin credentials not configured in environment");
