@@ -71,7 +71,12 @@ export async function GET(request: NextRequest) {
     .select("*", { count: "exact" });
 
   if (searchId) {
-    query = query.eq("id", searchId);
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(searchId);
+    if (isUUID) {
+      query = query.or(`id.eq.${searchId},question_text.ilike.%${searchId}%`);
+    } else {
+      query = query.ilike("question_text", `%${searchId}%`);
+    }
   }
 
   const { data, error, count } = await query

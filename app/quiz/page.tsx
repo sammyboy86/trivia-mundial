@@ -39,17 +39,18 @@ export default function QuizPage() {
   const [loading, setLoading] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const [animKey, setAnimKey] = useState(0);
-  const [isAdaptive, setIsAdaptive] = useState(false);
+  const [testGroup, setTestGroup] = useState<string>("control");
   const [isFetchingNext, setIsFetchingNext] = useState(false);
   const [quizView, setQuizView] = useState<"map" | "question" | "level_complete">("map");
 
   const questionStartTimeRef = useRef<number>(Date.now());
+  const isInitializingRef = useRef(false);
 
-  const fetchQuestions = useCallback(async (existingQuestions?: Question[], adaptiveMode: boolean = false) => {
+  const fetchQuestions = useCallback(async (existingQuestions?: Question[], group: string = "control") => {
     setLoading(true);
     let selectedQuestions = existingQuestions;
     if (!selectedQuestions || selectedQuestions.length === 0) {
-      if (adaptiveMode) {
+      if (group !== "control") {
          selectedQuestions = await getQuizQuestions("random", 1);
       } else {
          selectedQuestions = await getQuizQuestions("random", QUIZ_SIZE);
@@ -61,21 +62,34 @@ export default function QuizPage() {
   }, []);
 
   const initSession = useCallback(async () => {
+    if (isInitializingRef.current) return;
+    isInitializingRef.current = true;
     try {
       const stored = localStorage.getItem(SESSION_STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        if (parsed.sessionId && parsed.questions && parsed.questions.length > 0) {
+        const lastInteraction = parsed.lastInteractionTime || 0;
+        
+        if (Date.now() - lastInteraction > 240000) {
+          localStorage.removeItem(SESSION_STORAGE_KEY);
+        } else if (parsed.sessionId && parsed.questions && parsed.questions.length > 0) {
           setSessionId(parsed.sessionId);
           setQuestions(parsed.questions);
           setCurrentIndex(parsed.currentIndex || 0);
           setScore(parsed.score || 0);
-          setIsAdaptive(parsed.isAdaptive || false);
+          setTestGroup(parsed.testGroup || "control");
           setQuizView("map");
           setLoading(false);
           questionStartTimeRef.current = Date.now();
           return;
         }
+      }
+
+      // Generate or retrieve User ID
+      let userId = localStorage.getItem("trivia_user_id");
+      if (!userId) {
+        userId = "usr_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem("trivia_user_id", userId);
       }
 
       // Get existing AB group from localStorage to ensure consistency for returning users
@@ -89,7 +103,8 @@ export default function QuizPage() {
         body: JSON.stringify({ 
           testGroup: existingGroup,
           userAge: userProfile?.age,
-          footballInterest: userProfile?.interest
+          footballInterest: userProfile?.interest,
+          userId
         })
       });
       const data = await res.json();
@@ -100,23 +115,25 @@ export default function QuizPage() {
         localStorage.setItem("trivia_ab_group", assignedGroup);
       }
 
-      const isAdaptiveParam = assignedGroup === "adaptive";
-      setIsAdaptive(isAdaptiveParam);
+      setTestGroup(assignedGroup);
       setSessionId(newSessionId);
 
-      const newQuestions = await fetchQuestions(undefined, isAdaptiveParam);
+      const newQuestions = await fetchQuestions(undefined, assignedGroup);
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
         sessionId: newSessionId,
         questions: newQuestions,
         currentIndex: 0,
         score: 0,
-        isAdaptive: isAdaptiveParam
+        testGroup: assignedGroup,
+        lastInteractionTime: Date.now()
       }));
       setQuizView("map");
       questionStartTimeRef.current = Date.now();
     } catch (e) {
       console.error("Failed to init session", e);
       fetchQuestions();
+    } finally {
+      isInitializingRef.current = false;
     }
   }, [fetchQuestions]);
 
@@ -132,10 +149,11 @@ export default function QuizPage() {
         questions,
         currentIndex,
         score,
-        isAdaptive
+        testGroup,
+        lastInteractionTime: Date.now()
       }));
     }
-  }, [sessionId, questions, currentIndex, score, isAdaptive]);
+  }, [sessionId, questions, currentIndex, score, testGroup]);
 
   const currentQuestion = questions[currentIndex];
 
@@ -176,9 +194,9 @@ export default function QuizPage() {
           isCorrect,
           usedHint: showHint,
           timeTakenSeconds,
-          isCompleted: isAdaptive ? currentIndex + 1 >= QUIZ_SIZE : currentIndex + 1 >= questions.length,
+          isCompleted: false,
           score: newScore,
-          totalQuestions: isAdaptive ? QUIZ_SIZE : questions.length
+          totalQuestions: testGroup !== "control" ? QUIZ_SIZE : questions.length
         }),
       }).catch(console.error);
     }
@@ -238,23 +256,24 @@ export default function QuizPage() {
           isCorrect: finalCorrect,
           usedHint: showHint,
           timeTakenSeconds,
-          isCompleted: isAdaptive ? currentIndex + 1 >= QUIZ_SIZE : currentIndex + 1 >= questions.length,
+          isCompleted: false,
           score: newScore,
-          totalQuestions: isAdaptive ? QUIZ_SIZE : questions.length
+          totalQuestions: testGroup !== "control" ? QUIZ_SIZE : questions.length
         }),
       }).catch(console.error);
     }
   }
 
   async function handleNext() {
-    if (isAdaptive) {
+    if (testGroup !== "control") {
       if (currentIndex + 1 >= QUIZ_SIZE) {
         setShowResults(true);
         return;
       }
       setIsFetchingNext(true);
       try {
-        const res = await fetch("/api/quiz/next-adaptive", {
+        const endpoint = testGroup === "mers" ? "/api/quiz/next-mers" : "/api/quiz/next-adaptive";
+        const res = await fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId })
@@ -330,7 +349,7 @@ export default function QuizPage() {
   }
 
   if (showResults) {
-    const totalQuestions = isAdaptive ? QUIZ_SIZE : questions.length;
+    const totalQuestions = testGroup !== "control" ? QUIZ_SIZE : questions.length;
     const percentage = Math.round((score / totalQuestions) * 100);
     let resultEmoji = "🎉";
     let resultMessage = "¡Increíble! ¡Eres un maestro de la trivia!";
@@ -352,7 +371,7 @@ export default function QuizPage() {
           <div className={styles.resultsIcon}>{resultEmoji}</div>
           <h1 className={styles.resultsTitle}>¡Quiz Completado!</h1>
           <div className={styles.resultsScore}>
-            {score} / {isAdaptive ? QUIZ_SIZE : questions.length}
+            {score} / {totalQuestions}
           </div>
           <p className={styles.resultsSubtitle}>{resultMessage}</p>
           <div className={styles.resultsActions}>
@@ -376,7 +395,7 @@ export default function QuizPage() {
   }
 
   // Quiz active
-  const totalQuestionsForProgress = isAdaptive ? QUIZ_SIZE : questions.length;
+  const totalQuestionsForProgress = testGroup !== "control" ? QUIZ_SIZE : questions.length;
   const currentLevel = Math.floor(currentIndex / QUESTIONS_PER_LEVEL) + 1;
   const questionInLevel = (currentIndex % QUESTIONS_PER_LEVEL) + 1;
   const progress = (questionInLevel / QUESTIONS_PER_LEVEL) * 100;
@@ -726,7 +745,7 @@ export default function QuizPage() {
           >
             {isFetchingNext 
               ? "Cargando..." 
-              : ((isAdaptive ? currentIndex + 1 >= QUIZ_SIZE : currentIndex + 1 >= questions.length)
+              : ((testGroup !== "control" ? currentIndex + 1 >= QUIZ_SIZE : currentIndex + 1 >= questions.length)
                   ? "Ver Resultados 🏆"
                   : "Siguiente Pregunta →")}
           </button>

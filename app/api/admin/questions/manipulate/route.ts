@@ -3,6 +3,25 @@ import { verifySessionToken } from "@/lib/session";
 import { SESSION_COOKIE_NAME } from "@/lib/constants";
 import { GoogleGenAI } from "@google/genai";
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+async function callWithRetry(fn: () => Promise<any>, maxRetries = 4) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const msg = (err?.message || "").toLowerCase();
+      const status = err?.status || err?.response?.status;
+      if ((status === 429 || status === 503 || msg.includes("429") || msg.includes("quota") || msg.includes("too many requests")) && i < maxRetries - 1) {
+        const waitTime = Math.pow(2, i) * 3000 + Math.random() * 1000;
+        await sleep(waitTime);
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 function validateSession(request: NextRequest): boolean {
   const token = request.cookies.get(SESSION_COOKIE_NAME)?.value;
   if (!token) return false;
@@ -64,9 +83,9 @@ export async function POST(request: NextRequest) {
       try {
         const ai = new GoogleGenAI({ apiKey });
 
-        const chunkSize = 8;
+        const chunkSize = 1;
         const totalChunks = Math.ceil(questions.length / chunkSize);
-        const CONCURRENCY_LIMIT = 5;
+        const CONCURRENCY_LIMIT = 15; // Increased parallelization
 
         for (let i = 0; i < totalChunks; i += CONCURRENCY_LIMIT) {
           const batchPromises = [];
@@ -78,7 +97,7 @@ export async function POST(request: NextRequest) {
             sendEvent("progress", {
               current: chunkIndex,
               total: totalChunks,
-              heading: `Processing chunk ${chunkIndex + 1} of ${totalChunks}...`,
+              heading: `Processing item ${chunkIndex + 1} of ${totalChunks}...`,
               status: "processing",
             });
 
@@ -97,13 +116,13 @@ Input JSON array:
 ${JSON.stringify(chunk, null, 2)}`;
 
             batchPromises.push(
-              ai.models.generateContent({
+              callWithRetry(() => ai.models.generateContent({
                 model: "gemini-2.5-pro",
                 contents: fullPrompt,
                 config: {
                   responseMimeType: "application/json",
                 },
-              }).then(response => {
+              })).then(response => {
                 const responseText = response.text ?? "";
                 let parsed: unknown;
                 try {

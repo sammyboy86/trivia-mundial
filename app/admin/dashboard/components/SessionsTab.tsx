@@ -17,7 +17,7 @@ interface QuizSession {
   id: string;
   started_at: string;
   last_activity_at: string;
-  completed: boolean;
+  user_id?: string;
   score: number;
   total_questions: number;
   test_group: string;
@@ -62,8 +62,21 @@ export default function SessionsTab() {
           const durationSeconds = Math.floor((new Date(session.last_activity_at).getTime() - new Date(session.started_at).getTime()) / 1000);
           const isExpanded = expandedSessionId === session.id;
 
+          let bg = "rgba(100, 116, 139, 0.2)";
+          let color = "var(--text-secondary)";
+          let label = "A/B: Control";
+          if (session.test_group === 'llm') {
+            bg = "rgba(168, 85, 247, 0.2)";
+            color = "var(--accent-purple, #a855f7)";
+            label = "A/B: LLM";
+          } else if (session.test_group === 'mers') {
+            bg = "rgba(16, 185, 129, 0.2)";
+            color = "var(--accent-emerald, #10b981)";
+            label = "A/B: MERS";
+          }
+
           return (
-            <div key={session.id} className={styles.card} style={{ marginBottom: "1rem", borderLeft: session.completed ? "4px solid var(--accent-emerald)" : "4px solid var(--accent-blue)" }}>
+            <div key={session.id} className={styles.card} style={{ marginBottom: "1rem", borderLeft: `4px solid ${color}` }}>
               <div 
                 style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }}
                 onClick={() => setExpandedSessionId(isExpanded ? null : session.id)}
@@ -74,19 +87,19 @@ export default function SessionsTab() {
                     {new Date(session.started_at).toLocaleString()}
                   </span>
                 </div>
-                <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+                  {session.user_id && <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>{session.user_id.split("_")[1] || session.user_id}</span>}
                   <span style={{ 
                     padding: "0.2rem 0.5rem", 
                     borderRadius: "4px", 
                     fontSize: "0.8rem", 
                     fontWeight: "bold",
-                    background: session.test_group === 'adaptive' ? "rgba(168, 85, 247, 0.2)" : "rgba(100, 116, 139, 0.2)",
-                    color: session.test_group === 'adaptive' ? "var(--accent-purple, #a855f7)" : "var(--text-secondary)"
+                    background: bg,
+                    color: color
                   }}>
-                    {session.test_group === 'adaptive' ? "A/B: Adaptive" : "A/B: Control"}
+                    {label}
                   </span>
-                  <span>{session.completed ? "✅ Completed" : "⏳ In Progress"}</span>
-                  {session.completed && <span>Score: {session.score}/{session.total_questions}</span>}
+                  {session.total_questions > 0 && <span>Score: {session.score}/{session.total_questions}</span>}
                   <span>⏱️ {durationSeconds}s</span>
                   {session.user_age && <span title="Edad e interés en el fútbol" style={{ color: "var(--accent-primary)", fontWeight: "bold" }}>👤 {session.user_age}a (Nivel {session.football_interest})</span>}
                   <span>{session.quiz_answers.length} answers</span>

@@ -47,16 +47,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ question: null }, { status: 200 });
     }
 
-    // To prevent exceeding context limits and maximize speed, shuffle and take max 15 questions for the pool
-    const poolSubset = [...availableQuestions]
-      .sort(() => Math.random() - 0.5)
-      .slice(0, 30);
+    // Send all available questions to the LLM
+    const poolSubset = availableQuestions;
 
     // 3. Format USER_KNOWLEDGE_STATE
-    const userKnowledgeState = previousAnswers?.map((ans, idx) => ({
-      q_id: ans.question_id,
-      X_i: ans.is_correct ? 1 : 0
-    })) || [];
+    const userKnowledgeState = previousAnswers?.map((ans) => {
+      const qInfo = allQuestions.find(q => q.id === ans.question_id);
+      return {
+        q_id: ans.question_id,
+        text: ans.question_text || qInfo?.question_text,
+        KCs: qInfo?.associated_kc_id ? qInfo.associated_kc_id.split(",").map((s: string) => s.trim()) : [],
+        X_i: ans.is_correct ? 1 : 0
+      };
+    }) || [];
 
     // 4. Format AVAILABLE_QUESTION_POOL
     const availableQuestionPool = poolSubset.map(q => ({
@@ -67,21 +70,19 @@ export async function POST(request: NextRequest) {
 
     // 5. Construct Prompt
     const prompt = `### ROLE AND OBJECTIVE
-You are an expert pedagogical agent and adaptive routing engine for a mobile micro-learning application. Your objective is to select the single best next question to present to a user watching the FIFA World Cup 2026. Your goal is to maximize thematic coverage, maintain optimal cognitive engagement, and dynamically bridge gaps in the user's understanding of tournament regulations.
+You are an expert adaptive routing engine for a mobile micro-learning application. Your objective is to select the single best next question to present to a user. Your goal is to maximize engagement and learning by simulating a Multidimensional Elo Rating System (MERS) heuristic: balancing the user's estimated ability with question difficulty across varied Knowledge Components (KCs).
 
 ### INPUT DATA STRUCTURE
-1. USER_KNOWLEDGE_STATE (C_t): A sequential history of previous interactions:
+1. USER_KNOWLEDGE_STATE (C_t): A sequential history of previous interactions (showing correct and incorrect answers per KC):
 ${JSON.stringify(userKnowledgeState, null, 2)}
 
-2. AVAILABLE_QUESTION_POOL: A JSON array of remaining questions:
+2. AVAILABLE_QUESTION_POOL: A JSON array of remaining questions (including their respective KCs and difficulty contexts):
 ${JSON.stringify(availableQuestionPool, null, 2)}
 
-### PEDAGOGICAL EVALUATION FRAMEWORK
-To mitigate the cold-start problem and optimize learning paths, analyze the input using these principles:
-- Knowledge Component (KC) Extraction & Tracking: Semantically infer the user's mastery level across core domains.
-- Zone of Proximal Development (ZPD): Avoid questions that are too easy (boredom) or too complex relative to their current mastery (frustration). If a user fails a High-difficulty item, route them to an Intermediate scaffolding item targeting the same KC.
-- Diversity & Coverage Constraints: Prevent item-type fatigue. Do not recommend the same KC more than twice consecutively unless remediation is explicitly required. Balance proximal reinforcement with exploration of unvisited conceptual nodes.
-- Temporal Contextualization: Prioritize macro-level tournament rules (e.g., points, qualification, substitutions) that dynamically affect active match-play viewing experiences.
+### MERS HEURISTIC EVALUATION
+To optimize the learning path, analyze the input using these two core principles:
+1. KC Rotation (Diversity): Identify which Knowledge Components (KCs) the user has interacted with the least. Prioritize selecting a question from an underrepresented KC to ensure a balanced thematic coverage and prevent item-type fatigue.
+2. Ability-Difficulty Matching: Within the prioritized KC, dynamically infer the user's current ability based on their history (e.g., a streak of correct answers implies higher ability; failures imply lower ability). Select a question whose difficulty provides a moderate, engaging challenge relative to that ability. Avoid questions that are trivially easy or frustratingly hard.
 
 ### RULES AND CONSTRAINTS
 - You must ONLY select a question that exists within the provided AVAILABLE_QUESTION_POOL.
@@ -90,8 +91,9 @@ To mitigate the cold-start problem and optimize learning paths, analyze the inpu
 - The output must be valid JSON matching the specified schema exactly.
 
 ### OUTPUT SCHEMA
-You must respond strictly with a JSON object containing ONLY the following key:
+You must respond strictly with a JSON object containing ONLY the following keys:
 {
+  "motive": "string (Briefly explain your KC rotation and ability-difficulty reasoning for this choice)",
   "selected_q_id": "string (the exact ID of the chosen question)"
 }`;
 
@@ -130,7 +132,13 @@ You must respond strictly with a JSON object containing ONLY the following key:
       return NextResponse.json({ error: "Failed to fetch final selected question" }, { status: 500 });
     }
 
-    return NextResponse.json({ question: fullQuestion }, { status: 200 });
+    return NextResponse.json({ 
+      question: fullQuestion,
+      debug: {
+        prompt,
+        rawResponse: responseText
+      }
+    }, { status: 200 });
 
   } catch (error) {
     console.error("Adaptive routing error:", error);

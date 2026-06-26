@@ -602,6 +602,502 @@
   margin-bottom: 1rem;
 }
 
+/* ===== MERS Calibration Tab ===== */
+
+.mersHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.mersHeaderLeft {
+  flex: 1;
+}
+
+.mersTitle {
+  font-size: 1.4rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent-gold), #e6a817, var(--accent-emerald));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.25rem;
+}
+
+.mersSubtitle {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.mersCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  margin-bottom: 1.25rem;
+  backdrop-filter: blur(20px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.mersCardTitle {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.mersCardToggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.5rem 0;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 700;
+  transition: color var(--transition-fast);
+}
+
+.mersCardToggle:hover {
+  color: var(--accent-gold);
+}
+
+.mersCardToggleIcon {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  transition: transform var(--transition-fast);
+}
+
+.mersCardToggleLabel {
+  font-size: 1.05rem;
+}
+
+/* Equations Grid */
+.mersEquationsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.mersEquationBox {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  transition: all var(--transition-fast);
+}
+
+.mersEquationBox:hover {
+  border-color: rgba(245, 197, 66, 0.2);
+  background: rgba(245, 197, 66, 0.03);
+}
+
+.mersEquationLabel {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-gold);
+  margin-bottom: 0.75rem;
+}
+
+.mersEquationFormula {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 1rem;
+  color: var(--text-primary);
+  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.75rem;
+  text-align: center;
+  line-height: 1.8;
+  letter-spacing: 0.02em;
+}
+
+.mersEquationDesc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.mersParamLegend {
+  grid-column: 1 / -1;
+}
+
+.mersParamGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.mersParamItem {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0;
+}
+
+.mersParamSymbol {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.9rem;
+  color: var(--accent-emerald);
+  min-width: 60px;
+  font-weight: 600;
+}
+
+.mersParamName {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+/* Controls Grid */
+.mersControlsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.mersInputHint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.mersLaunchRow {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.mersPoolSummary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.75rem 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.mersPoolDivider {
+  color: var(--text-muted);
+  opacity: 0.4;
+}
+
+/* Progress Section */
+.mersProgressSection {
+  margin-bottom: 1.5rem;
+}
+
+.mersProgressInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.mersProgressLabel {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.mersProgressPct {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+}
+
+.mersProgressBarTrack {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.mersProgressBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent-emerald));
+  border-radius: 100px;
+  transition: width 0.3s ease;
+  box-shadow: 0 0 12px rgba(245, 197, 66, 0.3);
+}
+
+/* Stats Grid */
+.mersStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.mersStatCard {
+  text-align: center;
+  padding: 1rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+}
+
+.mersStatValue {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  margin-bottom: 0.25rem;
+}
+
+.mersStatLabel {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+/* Log Terminal */
+.mersLogContainer {
+  max-height: 240px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+}
+
+.mersLogPre {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.mersLogLineNum {
+  color: var(--text-muted);
+  opacity: 0.5;
+  user-select: none;
+  margin-right: 0.5rem;
+}
+
+.mersLogCursor {
+  color: var(--accent-gold);
+  animation: pulse 1s infinite;
+}
+
+/* Distribution Histogram */
+.mersDistribution {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+}
+
+.mersDistRow {
+  display: grid;
+  grid-template-columns: 45px 1fr 35px;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.mersDistLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.mersDistBarTrack {
+  height: 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mersDistBarFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  min-width: 2px;
+}
+
+.mersDistCount {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.mersDistLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.mersDistLegendItem {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+/* Difficulty Tier Colors */
+.mersTierVeryEasy {
+  color: #34d399;
+  background: rgba(52, 211, 153, 0.15);
+}
+
+.mersTierEasy {
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.15);
+}
+
+.mersTierMedium {
+  color: #f5c542;
+  background: rgba(245, 197, 66, 0.15);
+}
+
+.mersTierHard {
+  color: #fb923c;
+  background: rgba(251, 146, 60, 0.15);
+}
+
+.mersTierVeryHard {
+  color: #f87171;
+  background: rgba(248, 113, 113, 0.15);
+}
+
+.mersDistBarFill.mersTierVeryEasy { background: linear-gradient(90deg, #34d399, #10b981); }
+.mersDistBarFill.mersTierEasy { background: linear-gradient(90deg, #60a5fa, #3b82f6); }
+.mersDistBarFill.mersTierMedium { background: linear-gradient(90deg, #f5c542, #eab308); }
+.mersDistBarFill.mersTierHard { background: linear-gradient(90deg, #fb923c, #f97316); }
+.mersDistBarFill.mersTierVeryHard { background: linear-gradient(90deg, #f87171, #ef4444); }
+
+/* Results Table */
+.mersResultsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.mersResultsHeader .mersCardTitle {
+  margin-bottom: 0;
+}
+
+.mersSortBar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mersTableWrapper {
+  overflow-x: auto;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-sm);
+}
+
+.mersTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.mersTable th {
+  text-align: left;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+}
+
+.mersTable td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+
+.mersTable tbody tr:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.mersTableNum {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.mersTableQuestion {
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.mersTableBeta {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.mersTierBadge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 100px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.mersFinalNote {
+  margin-top: 1rem;
+  padding: 1rem 1.25rem;
+  background: rgba(52, 211, 153, 0.06);
+  border: 1px solid rgba(52, 211, 153, 0.15);
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.mersFinalNote code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.82rem;
+  color: var(--accent-emerald);
+}
+
 @media (max-width: 480px) {
   .loginCard {
     padding: 2rem 1.5rem;
@@ -644,5 +1140,26 @@
 
   .processModal {
     max-width: 100%;
+  }
+
+  .mersEquationsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mersControlsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mersStatsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mersLaunchRow {
+    flex-direction: column;
+  }
+
+  .mersDistLegend {
+    gap: 0.5rem;
+    font-size: 0.7rem;
   }
 }

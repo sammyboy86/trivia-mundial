@@ -15,9 +15,10 @@ import SessionsTab from "./components/SessionsTab";
 import JsonManipulationTab from "./components/JsonManipulationTab";
 import ThematicClusteringTab from "./components/ThematicClusteringTab";
 import KcGeneratorTab from "./components/KcGeneratorTab";
+import MersCalibrationTab from "./components/MersCalibrationTab";
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState<"questions" | "markdown" | "import" | "sessions" | "manipulate" | "clustering" | "kc-generator">("questions");
+  const [activeTab, setActiveTab] = useState<"questions" | "markdown" | "import" | "sessions" | "manipulate" | "clustering" | "kc-generator" | "mers">("questions");
   
   // Shared State
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -183,6 +184,13 @@ export default function AdminDashboard() {
           >
             🧠 KC Generator
           </button>
+          <button
+            className={`${styles.tab} ${activeTab === "mers" ? styles.tabActive : ""}`}
+            onClick={() => setActiveTab("mers")}
+            id="tab-mers"
+          >
+            ⚡ Adaptive Engine
+          </button>
         </div>
 
         {/* Content */}
@@ -247,6 +255,12 @@ export default function AdminDashboard() {
 
         {activeTab === "kc-generator" && (
           <KcGeneratorTab
+            showToast={showToast}
+          />
+        )}
+
+        {activeTab === "mers" && (
+          <MersCalibrationTab
             showToast={showToast}
           />
         )}

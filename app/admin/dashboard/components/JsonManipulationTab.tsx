@@ -120,17 +120,17 @@ export default function JsonManipulationTab({
       }
 
       // Build filtered payload
-      const filteredQs = targetData.map(q => {
-        const f: any = {};
+      const filteredQs = targetData.map((q, i) => {
+        const f: any = { _t_id: q.id || String(i) };
         selectedFields.forEach(k => {
-          if (q[k] !== undefined) f[k] = q[k];
+          if (q[k] !== undefined && k !== 'id') f[k] = q[k];
         });
         return f;
       });
 
       const finalPrompt = fieldsToUpdate.size > 0 
-        ? `${prompt}\n\nIMPORTANT: Only modify or return these specific fields: ${Array.from(fieldsToUpdate).join(", ")}`
-        : prompt;
+        ? `${prompt}\n\nIMPORTANT: Only modify or return these specific fields: ${Array.from(fieldsToUpdate).join(", ")}, _t_id\nCRITICAL: You MUST include the '_t_id' field in every returned object unmodified for tracking purposes.`
+        : `${prompt}\n\nCRITICAL: You MUST include the '_t_id' field in every returned object unmodified for tracking purposes.`;
 
       const res = await fetch("/api/admin/questions/manipulate", {
         method: "POST",
@@ -164,7 +164,8 @@ export default function JsonManipulationTab({
               else if (eventType === "chunk") newQs = [...newQs, ...(data.result || [])];
               else if (eventType === "complete") {
                 const merged = targetData.map((orig, i) => {
-                  const llmResult = newQs[i] || {};
+                  const trackingId = orig.id || String(i);
+                  const llmResult = newQs.find((r: any) => r._t_id === trackingId || r.id === trackingId) || newQs[i] || {};
                   
                   // Extract fields that are NOT standard columns into 'metadata'
                   const standardColumns = ['id', 'question_text', 'question_type', 'correct_answer', 'correct_option', 'options', 'option_a', 'option_b', 'option_c', 'option_d', 'hint', 'answer_explanation', 'associated_kc_id', 'metadata'];

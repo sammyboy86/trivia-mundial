@@ -148,7 +148,7 @@ export default function QuestionsTab({
         <div style={{ marginLeft: 'auto', display: 'flex', gap: '0.5rem' }}>
           <input 
             type="text" 
-            placeholder="Search by ID..." 
+            placeholder="Search text or ID..." 
             className="form-input" 
             style={{ width: '250px' }}
             value={searchId}

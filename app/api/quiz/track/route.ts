@@ -41,16 +41,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to record answer" }, { status: 500 });
     }
 
-    // Update the session's last activity
+    // Update the session's last activity and rolling score
     const sessionUpdate: Record<string, any> = {
-      last_activity_at: new Date().toISOString()
+      last_activity_at: new Date().toISOString(),
+      score: score,
+      total_questions: totalQuestions
     };
-
-    if (isCompleted) {
-      sessionUpdate.completed = true;
-      sessionUpdate.score = score;
-      sessionUpdate.total_questions = totalQuestions;
-    }
 
     const { error: sessionError } = await supabaseAdmin
       .from("quiz_sessions")
