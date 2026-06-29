@@ -119,32 +119,54 @@ export default function QuizPage() {
       }
 
       // Generate or retrieve User ID
-      let userId = localStorage.getItem("trivia_user_id");
-      if (!userId) {
-        userId = "usr_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-        localStorage.setItem("trivia_user_id", userId);
+      let currentUserId = localStorage.getItem("trivia_user_id");
+      if (!currentUserId) {
+        currentUserId = "usr_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        localStorage.setItem("trivia_user_id", currentUserId);
       }
 
       // Get existing AB group from localStorage to ensure consistency for returning users
-      const existingGroup = localStorage.getItem("trivia_ab_group");
-      const userProfileStr = localStorage.getItem("trivia_user_profile");
-      const userProfile = userProfileStr ? JSON.parse(userProfileStr) : null;
+      let groupToRequest = null;
+      let userAge = null;
+      let footballInterest = null;
+      let isTest = false;
+      
+      const storedGroup = localStorage.getItem("trivia_ab_group");
+      if (storedGroup) {
+        groupToRequest = storedGroup;
+      }
+      
+      const storedTestFlag = localStorage.getItem("trivia_is_test");
+      if (storedTestFlag === "true") {
+        isTest = true;
+        localStorage.removeItem("trivia_is_test");
+      }
+
+      const demographicData = localStorage.getItem("trivia_demographics");
+      if (demographicData) {
+        try {
+          const parsed = JSON.parse(demographicData);
+          userAge = parsed.age;
+          footballInterest = parsed.footballInterest;
+        } catch(e) {}
+      }
 
       const res = await fetch("/api/quiz/session", { 
-        method: "POST",
+        method: "POST", 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          testGroup: existingGroup,
-          userAge: userProfile?.age,
-          footballInterest: userProfile?.interest,
-          userId
+          testGroup: groupToRequest,
+          userAge,
+          footballInterest,
+          userId: currentUserId,
+          isTest
         })
       });
       const data = await res.json();
       const newSessionId = data.sessionId;
       const assignedGroup = data.testGroup;
       
-      if (!existingGroup && assignedGroup) {
+      if (!storedGroup && assignedGroup) {
         localStorage.setItem("trivia_ab_group", assignedGroup);
       }
 

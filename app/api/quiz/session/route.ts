@@ -7,6 +7,7 @@ export async function POST(request: NextRequest) {
     let userAge: number | null = null;
     let footballInterest: number | null = null;
     let userId: string | null = null;
+    let isTest: boolean = false;
 
     try {
       const body = await request.json();
@@ -14,6 +15,7 @@ export async function POST(request: NextRequest) {
       userAge = body.userAge;
       footballInterest = body.footballInterest;
       userId = body.userId;
+      isTest = body.isTest || false;
     } catch (e) {
       // Body might be empty
     }
@@ -32,7 +34,8 @@ export async function POST(request: NextRequest) {
         test_group: testGroup,
         user_age: userAge,
         football_interest: footballInterest,
-        user_id: userId
+        user_id: userId,
+        is_test: isTest
       })
       .select("id")
       .single();

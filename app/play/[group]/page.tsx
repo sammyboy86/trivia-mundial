@@ -23,6 +23,9 @@ export default function ForceGroupPage() {
       // Force the AB group
       localStorage.setItem("trivia_ab_group", group);
       
+      // Mark this session as a test session
+      localStorage.setItem("trivia_is_test", "true");
+      
       console.log(`Forced AB group to: ${group}`);
     } else {
       console.warn(`Invalid group: ${group}. Falling back to normal assignment.`);
