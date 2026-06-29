@@ -7,7 +7,7 @@ export async function POST(request: NextRequest) {
     let userAge: number | null = null;
     let footballInterest: number | null = null;
     let userId: string | null = null;
-    
+
     try {
       const body = await request.json();
       requestedGroup = body.testGroup;
@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
 
     const { data, error } = await supabaseAdmin
       .from("quiz_sessions")
-      .insert({ 
+      .insert({
         test_group: testGroup,
         user_age: userAge,
         football_interest: footballInterest,

@@ -62,7 +62,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ question: availableQuestions[Math.floor(Math.random() * availableQuestions.length)] }, { status: 200 });
     }
 
-    return NextResponse.json({ question: nextQ.question }, { status: 200 });
+    return NextResponse.json({ 
+      question: nextQ.question,
+      debug: {
+        targetKc: nextQ.targetKc,
+        expectedProbability: nextQ.expected,
+        currentTheta: userState[nextQ.targetKc]?.theta || 0,
+        beta: nextQ.question.elo_beta
+      }
+    }, { status: 200 });
   } catch (error) {
     console.error("MERS routing error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

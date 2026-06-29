@@ -42,21 +42,53 @@ export default function QuizPage() {
   const [testGroup, setTestGroup] = useState<string>("control");
   const [isFetchingNext, setIsFetchingNext] = useState(false);
   const [quizView, setQuizView] = useState<"map" | "question" | "level_complete">("map");
+  const [algoTraces, setAlgoTraces] = useState<Record<string, any>>({});
 
   const questionStartTimeRef = useRef<number>(Date.now());
   const isInitializingRef = useRef(false);
 
-  const fetchQuestions = useCallback(async (existingQuestions?: Question[], group: string = "control") => {
+  const fetchQuestions = useCallback(async (existingQuestions?: Question[], group: string = "control", sid?: string) => {
     setLoading(true);
     let selectedQuestions = existingQuestions;
     if (!selectedQuestions || selectedQuestions.length === 0) {
-      if (group !== "control") {
-         selectedQuestions = await getQuizQuestions("random", 1);
+      if (group !== "control" && sid) {
+        try {
+          const endpoint = group === "mers" ? "/api/quiz/next-mers" : "/api/quiz/next-adaptive";
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: sid })
+          });
+          if (!res.ok) throw new Error("Failed to fetch first adaptive question");
+          const data = await res.json();
+          if (data.question) {
+            selectedQuestions = [data.question];
+            if (data.debug) {
+              let trace: any = {};
+              if (group === "llm" && data.debug.rawResponse) {
+                try {
+                  const parsed = JSON.parse(data.debug.rawResponse);
+                  trace = { motive: parsed.motive, selected_q_id: parsed.selected_q_id };
+                } catch(e) {
+                  trace = { error: "Failed to parse LLM response" };
+                }
+              } else if (group === "mers") {
+                 trace = { ...data.debug };
+              }
+              setAlgoTraces(prev => ({...prev, [data.question.id]: trace}));
+            }
+          } else {
+            selectedQuestions = await getQuizQuestions("random", 1);
+          }
+        } catch (e) {
+          console.error(e);
+          selectedQuestions = await getQuizQuestions("random", 1);
+        }
       } else {
          selectedQuestions = await getQuizQuestions("random", QUIZ_SIZE);
       }
     }
-    setQuestions(selectedQuestions);
+    setQuestions(selectedQuestions || []);
     setLoading(false);
     return selectedQuestions;
   }, []);
@@ -78,6 +110,7 @@ export default function QuizPage() {
           setCurrentIndex(parsed.currentIndex || 0);
           setScore(parsed.score || 0);
           setTestGroup(parsed.testGroup || "control");
+          setAlgoTraces(parsed.algoTraces || {});
           setQuizView("map");
           setLoading(false);
           questionStartTimeRef.current = Date.now();
@@ -118,13 +151,14 @@ export default function QuizPage() {
       setTestGroup(assignedGroup);
       setSessionId(newSessionId);
 
-      const newQuestions = await fetchQuestions(undefined, assignedGroup);
+      const newQuestions = await fetchQuestions(undefined, assignedGroup, newSessionId);
       localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify({
         sessionId: newSessionId,
         questions: newQuestions,
         currentIndex: 0,
         score: 0,
         testGroup: assignedGroup,
+        algoTraces: {},
         lastInteractionTime: Date.now()
       }));
       setQuizView("map");
@@ -150,10 +184,11 @@ export default function QuizPage() {
         currentIndex,
         score,
         testGroup,
+        algoTraces,
         lastInteractionTime: Date.now()
       }));
     }
-  }, [sessionId, questions, currentIndex, score, testGroup]);
+  }, [sessionId, questions, currentIndex, score, testGroup, algoTraces]);
 
   const currentQuestion = questions[currentIndex];
 
@@ -181,6 +216,14 @@ export default function QuizPage() {
 
     const timeTakenSeconds = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
 
+    let traceToSend = algoTraces[currentQuestion.id] || {};
+    if (testGroup === "mers" && traceToSend.currentTheta !== undefined && traceToSend.expectedProbability !== undefined) {
+      traceToSend = {
+        ...traceToSend,
+        result: isCorrect ? 1 : 0
+      };
+    }
+
     if (sessionId) {
       fetch("/api/quiz/track", {
         method: "POST",
@@ -196,7 +239,8 @@ export default function QuizPage() {
           timeTakenSeconds,
           isCompleted: false,
           score: newScore,
-          totalQuestions: testGroup !== "control" ? QUIZ_SIZE : questions.length
+          totalQuestions: testGroup !== "control" ? QUIZ_SIZE : questions.length,
+          algoTrace: traceToSend
         }),
       }).catch(console.error);
     }
@@ -243,6 +287,14 @@ export default function QuizPage() {
 
     const timeTakenSeconds = Math.floor((Date.now() - questionStartTimeRef.current) / 1000);
 
+    let traceToSend = algoTraces[currentQuestion.id] || {};
+    if (testGroup === "mers" && traceToSend.currentTheta !== undefined && traceToSend.expectedProbability !== undefined) {
+      traceToSend = {
+        ...traceToSend,
+        result: finalCorrect ? 1 : 0
+      };
+    }
+
     if (sessionId) {
       fetch("/api/quiz/track", {
         method: "POST",
@@ -258,7 +310,8 @@ export default function QuizPage() {
           timeTakenSeconds,
           isCompleted: false,
           score: newScore,
-          totalQuestions: testGroup !== "control" ? QUIZ_SIZE : questions.length
+          totalQuestions: testGroup !== "control" ? QUIZ_SIZE : questions.length,
+          algoTrace: traceToSend
         }),
       }).catch(console.error);
     }
@@ -282,6 +335,24 @@ export default function QuizPage() {
         const data = await res.json();
         if (data.question) {
           setQuestions(prev => [...prev, data.question]);
+          if (data.debug) {
+            let trace: any = {};
+            if (testGroup === "llm" && data.debug.rawResponse) {
+              try {
+                const parsed = JSON.parse(data.debug.rawResponse);
+                trace = { 
+                  motive: parsed.motive, 
+                  selected_q_id: parsed.selected_q_id 
+                };
+              } catch(e) {
+                // If parsing fails, we might just store nothing or a minimal error
+                trace = { error: "Failed to parse LLM response" };
+              }
+            } else if (testGroup === "mers") {
+               trace = { ...data.debug };
+            }
+            setAlgoTraces(prev => ({...prev, [data.question.id]: trace}));
+          }
         } else {
           setShowResults(true);
           return;

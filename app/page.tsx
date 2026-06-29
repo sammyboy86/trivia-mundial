@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
@@ -134,6 +135,13 @@ export default function Home() {
           </div>
         </div>
       )}
+      <Link
+        href="/demo"
+        className={styles["hero-transparency-link"]}
+        id="transparency-link"
+      >
+        🔬 Descubre cómo rastreamos tu conocimiento
+      </Link>
 
       <div className={styles["hero-features"]}>
         <div className={styles["hero-feature"]}>
@@ -144,10 +152,17 @@ export default function Home() {
           <span className={styles["hero-feature-icon"]}>✅</span>
           <span className={styles["hero-feature-text"]}>Verdadero / Falso</span>
         </div>
-        <div className={styles["hero-feature"]}>
-          <span className={styles["hero-feature-icon"]}>✍️</span>
-          <span className={styles["hero-feature-text"]}>Preguntas Abiertas</span>
-        </div>
+      </div>
+
+      <div className={styles["samuel-container"]}>
+        <Image 
+          src="/samuel.png" 
+          alt="Samuel" 
+          width={350} 
+          height={500} 
+          className={styles["samuel-img"]} 
+          priority
+        />
       </div>
     </main>
   );

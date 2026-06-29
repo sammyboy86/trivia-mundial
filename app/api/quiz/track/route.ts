@@ -15,7 +15,8 @@ export async function POST(request: NextRequest) {
       timeTakenSeconds,
       isCompleted,
       score,
-      totalQuestions
+      totalQuestions,
+      algoTrace
     } = body;
 
     if (!sessionId || !questionId || !questionText) {
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
         is_correct: isCorrect,
         used_hint: usedHint || false,
         time_taken_seconds: timeTakenSeconds || 0,
+        algo_trace: algoTrace || {}
       });
 
     if (answerError) {
