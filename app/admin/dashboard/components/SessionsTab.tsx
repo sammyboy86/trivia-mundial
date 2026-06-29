@@ -99,7 +99,7 @@ export default function SessionsTab() {
                   }}>
                     {label}
                   </span>
-                  {session.total_questions > 0 && <span>Score: {session.score}/{session.total_questions}</span>}
+                  {session.quiz_answers && session.quiz_answers.length > 0 && <span>Score: {session.score}/{session.quiz_answers.length}</span>}
                   <span>⏱️ {durationSeconds}s</span>
                   {session.user_age && <span title="Edad e interés en el fútbol" style={{ color: "var(--accent-primary)", fontWeight: "bold" }}>👤 {session.user_age}a (Nivel {session.football_interest})</span>}
                   <span>{session.quiz_answers.length} answers</span>

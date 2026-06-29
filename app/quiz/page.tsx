@@ -386,9 +386,48 @@ export default function QuizPage() {
     }
   }
 
-  function handleRestartLevel(levelNum: number) {
+  async function handleRestartLevel(levelNum: number) {
     if (!confirm(`¿Estás seguro de que quieres reiniciar el Nivel ${levelNum}? Perderás el progreso actual de este nivel.`)) return;
     const newIndex = (levelNum - 1) * QUESTIONS_PER_LEVEL;
+    
+    if (testGroup !== "control") {
+      setLoading(true);
+      try {
+        const endpoint = testGroup === "mers" ? "/api/quiz/next-mers" : "/api/quiz/next-adaptive";
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId })
+        });
+        if (!res.ok) throw new Error("Failed to fetch adaptive question");
+        const data = await res.json();
+        if (data.question) {
+          setQuestions(prev => {
+            const nextQuestions = prev.slice(0, newIndex);
+            return [...nextQuestions, data.question];
+          });
+          if (data.debug) {
+            let trace: any = {};
+            if (testGroup === "llm" && data.debug.rawResponse) {
+              try {
+                const parsed = JSON.parse(data.debug.rawResponse);
+                trace = { motive: parsed.motive, selected_q_id: parsed.selected_q_id };
+              } catch(e) {}
+            } else if (testGroup === "mers") {
+               trace = { ...data.debug };
+            }
+            setAlgoTraces(prev => ({...prev, [data.question.id]: trace}));
+          }
+        } else {
+          setQuestions(prev => prev.slice(0, newIndex));
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
     setCurrentIndex(newIndex);
     if (levelNum === 1) setScore(0);
     setQuizView("question");
@@ -545,7 +584,7 @@ export default function QuizPage() {
                       <span style={{ color: "var(--accent-emerald)", fontWeight: "bold" }}>Completado</span>
                       <button 
                         className="btn btn-secondary btn-sm"
-                        onClick={() => handleRestartLevel(levelNum)}
+                        onClick={() => { handleRestartLevel(levelNum); }}
                       >
                         🔄 Reiniciar
                       </button>
@@ -564,7 +603,7 @@ export default function QuizPage() {
                       {currentIndex % QUESTIONS_PER_LEVEL !== 0 && (
                         <button 
                           className="btn btn-secondary btn-sm"
-                          onClick={() => handleRestartLevel(levelNum)}
+                          onClick={() => { handleRestartLevel(levelNum); }}
                         >
                           🔄 Reiniciar
                         </button>
