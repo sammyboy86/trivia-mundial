@@ -3,25 +3,26 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET() {
   try {
-    // We count exact rows in quiz_sessions created since June 29, 2026
-    // where is_test is false
-    const { count, error } = await supabaseAdmin
+    // June 29 2026 00:00 CDMX is 2026-06-29T06:00:00Z (UTC)
+    const { data, error } = await supabaseAdmin
       .from("quiz_sessions")
-      .select("*", { count: "exact", head: true })
-      .gte("created_at", "2026-06-29T00:00:00Z")
+      .select("user_id")
+      .gte("created_at", "2026-06-29T06:00:00Z")
       .eq("is_test", false);
 
     if (error) {
       console.error("Error fetching stats:", error);
-      // En local, si falla la conexión a Supabase, devolvemos un número falso (ej. 87)
-      // para que el UI siga funcionando y se pueda probar la animación.
-      return NextResponse.json({ count: 87 }, { status: 200 });
+      // Fallback
+      return NextResponse.json({ count: 0 }, { status: 200 });
     }
 
-    return NextResponse.json({ count: count || 0 }, { status: 200 });
+    // Count unique user_ids
+    const uniqueUsers = new Set(data.map((row: any) => row.user_id).filter(Boolean));
+    const count = uniqueUsers.size;
+
+    return NextResponse.json({ count }, { status: 200 });
   } catch (error) {
     console.error("Server error fetching stats:", error);
-    // Fallback de seguridad
-    return NextResponse.json({ count: 87 }, { status: 200 });
+    return NextResponse.json({ count: 0 }, { status: 200 });
   }
 }
