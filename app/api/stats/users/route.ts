@@ -7,7 +7,7 @@ export async function GET() {
     const { data, error } = await supabaseAdmin
       .from("quiz_sessions")
       .select("user_id")
-      .gte("created_at", "2026-06-29T06:00:00Z")
+      .gte("started_at", "2026-06-29T06:00:00Z")
       .eq("is_test", false);
 
     if (error) {
