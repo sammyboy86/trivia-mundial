@@ -12,6 +12,9 @@ export default function Home() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [age, setAge] = useState("");
   const [interest, setInterest] = useState("4");
+  
+  const [userCount, setUserCount] = useState<number | null>(null);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   useEffect(() => {
     try {
@@ -27,7 +30,29 @@ export default function Home() {
     } catch (e) {
       console.error(e);
     }
+
+    // Fetch user count
+    fetch("/api/stats/users")
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.count === "number") {
+          setUserCount(data.count);
+        }
+      })
+      .catch(err => console.error("Error fetching stats:", err));
   }, []);
+
+  const triggerStartAnimation = () => {
+    setIsAnimating(true);
+    if (userCount !== null) {
+      setUserCount(prev => (prev || 0) + 1);
+    }
+    
+    // Wait for the animation to finish before redirecting
+    setTimeout(() => {
+      router.push(`/quiz`);
+    }, 1500);
+  };
 
   const handleStartNew = () => {
     const profile = localStorage.getItem("trivia_user_profile");
@@ -35,7 +60,7 @@ export default function Home() {
       setShowOnboarding(true);
     } else {
       localStorage.removeItem("trivia_session_data");
-      router.push(`/quiz`);
+      triggerStartAnimation();
     }
   };
 
@@ -47,7 +72,7 @@ export default function Home() {
     }));
     setShowOnboarding(false);
     localStorage.removeItem("trivia_session_data");
-    router.push(`/quiz`);
+    triggerStartAnimation();
   };
 
   return (
@@ -72,6 +97,15 @@ export default function Home() {
       </p>
 
       <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "center" }}>
+        {userCount !== null && (
+          <div className={styles["stats-container"]}>
+            <span className={`${styles["stats-number"]} ${isAnimating ? styles.bump : ''}`}>
+              {userCount}
+            </span>
+            <span>/ 120 para obtener poder estadístico</span>
+            {isAnimating && <span className={styles["plus-one-anim"]}>+1</span>}
+          </div>
+        )}
       </div>
 
       <div className={styles["hero-actions"]}>

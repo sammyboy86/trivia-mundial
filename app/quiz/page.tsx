@@ -141,6 +141,10 @@ export default function QuizPage() {
         isTest = true;
         localStorage.removeItem("trivia_is_test");
       }
+      
+      if (typeof window !== "undefined" && window.location.hostname === "localhost") {
+        isTest = true;
+      }
 
       const demographicData = localStorage.getItem("trivia_demographics");
       if (demographicData) {
@@ -645,9 +649,31 @@ export default function QuizPage() {
         <div style={{ marginTop: "3rem", textAlign: "center", padding: "2rem", background: "var(--bg-secondary)", borderRadius: "var(--radius-lg)", border: "1px solid var(--border)" }}>
           <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>🎉</div>
           <h2>¡Nivel {currentLevel - 1} Completado!</h2>
-          <p style={{ color: "var(--text-secondary)", marginBottom: "2rem" }}>
+          <p style={{ color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
             ¡Gran trabajo! Has avanzado al siguiente nivel del torneo.
           </p>
+          
+          <div style={{
+            margin: '0 auto 2rem auto',
+            maxWidth: '500px',
+            padding: '1rem',
+            background: 'rgba(96, 165, 250, 0.1)',
+            borderLeft: '4px solid var(--accent-blue)',
+            borderRadius: '0 var(--radius-md) var(--radius-md) 0',
+            fontSize: '0.95rem',
+            color: 'var(--text-primary)',
+            textAlign: 'left',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: '0.75rem',
+            lineHeight: '1.5'
+          }}>
+            <span style={{ fontSize: '1.3rem', marginTop: '0.1rem' }}>🤖</span>
+            <span>
+              Ya tenemos una mejor idea de cuánto sabes, el siguiente nivel tendrá preguntas que te reten, ¡tú puedes!
+            </span>
+          </div>
+
           <div style={{ display: "flex", gap: "1rem", justifyContent: "center" }}>
             <button 
               className="btn btn-primary btn-lg" 
@@ -688,6 +714,28 @@ export default function QuizPage() {
                 {typeLabel}
               </span>
             </div>
+
+            {questionInLevel === 1 && currentLevel === 1 && (
+              <div style={{
+                padding: '1rem',
+                marginBottom: '1.5rem',
+                background: 'rgba(96, 165, 250, 0.1)',
+                borderLeft: '4px solid var(--accent-blue)',
+                borderRadius: '0 var(--radius-md) var(--radius-md) 0',
+                fontSize: '0.95rem',
+                color: 'var(--text-primary)',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '0.75rem',
+                lineHeight: '1.5'
+              }}>
+                <span style={{ fontSize: '1.3rem', marginTop: '0.1rem' }}>🤖</span>
+                <span>
+                  En esta trivia rastreamos tu conocimiento y adaptamos las preguntas a tu nivel conforme la vas respondiendo.
+                </span>
+              </div>
+            )}
 
         <h2 className={styles.questionText} style={{ whiteSpace: "pre-line", lineHeight: "1.6" }}>
           {renderWithBold(currentQuestion.question_text.replace(/\.\s+/g, ".\n\n"))}
@@ -845,19 +893,19 @@ export default function QuizPage() {
           </div>
         )}
 
-        {/* Explanation for wrong answers */}
-        {isAnswered && !isCurrentAnswerCorrect && currentQuestion.answer_explanation && (
+        {/* Explanation for answers */}
+        {isAnswered && currentQuestion.answer_explanation && (
           <div style={{
             marginTop: '2rem',
             padding: '1rem',
-            background: 'rgba(239, 68, 68, 0.05)',
-            borderLeft: '4px solid var(--accent-red)',
+            background: isCurrentAnswerCorrect ? 'rgba(52, 211, 153, 0.05)' : 'rgba(239, 68, 68, 0.05)',
+            borderLeft: `4px solid ${isCurrentAnswerCorrect ? 'var(--accent-emerald)' : 'var(--accent-red)'}`,
             borderRadius: '0 var(--radius-md) var(--radius-md) 0',
             color: 'var(--text-primary)',
             fontSize: '0.95rem',
             lineHeight: '1.6'
           }}>
-            <strong style={{ color: 'var(--accent-red)', display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <strong style={{ color: isCurrentAnswerCorrect ? 'var(--accent-emerald)' : 'var(--accent-red)', display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               📚 Explicación
             </strong>
             {renderWithBold(currentQuestion.answer_explanation)}
